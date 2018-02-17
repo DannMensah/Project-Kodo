@@ -3,7 +3,7 @@ import mss
 import pygame
 
 # Captures part of the screen and returns the resulting pixels as a NumPy array
-def capture_screen(capture_screen_x=0, capture_screen_y=40, capture_screen_width=800, capture_screen_height=640):
+def capture_screen(capture_screen_x=0, capture_screen_y=40, capture_screen_width=800, capture_screen_height=600):
     # Part of the screen to capture
     crop = {'top': capture_screen_y, 
                'left': capture_screen_x, 
