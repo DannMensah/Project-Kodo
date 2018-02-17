@@ -26,23 +26,26 @@ def init_gamepad_capture(gamepad_id=0):
 def capture_gamepad(gamepad_id=0):
     pygame.event.get()
     joystick = pygame.joystick.Joystick(gamepad_id)
-
-    name = joystick.get_name()
+    
+    key_events = []
+    key_labels = []
 
     n_axes = joystick.get_numaxes()
     axes = [joystick.get_axis(i) for i in range(n_axes)]
-
-    for i in range( n_axes ):
-            axis = joystick.get_axis( i )
-            print(axis)
-
+    key_events += axes
+    key_labels += ["axis_{}".format(i) for i in range(n_axes)]
+            
     n_buttons = joystick.get_numbuttons()
     buttons = [joystick.get_button(i) for i in range(n_buttons)] 
+    key_events += buttons
+    key_labels += ["button_{}".format(i) for i in range(n_buttons)]
 
     n_hats = joystick.get_numhats() 
     hats = [joystick.get_hat(i) for hat in range(n_hats)]
+    key_events += hats
+    key_labels += ["hat_{}".append(i) for i in range(n_hats)]
 
-    return (axes, buttons, hats)
+    return (key_labels, key_events)
 
 def stop_gamepad_capture():
     pygame.quit()

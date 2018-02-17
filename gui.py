@@ -23,9 +23,9 @@ class Window(QTabWidget):
         
         self.init_record_UI()
 
-        self.setGeometry(840, 80, 800, 600)
+        self.setGeometry(1000, 0, 1000, 800)
         self.setMinimumWidth(300)
-        self.setMinimumHeight(200)
+        self.setMinimumHeight(500)
         self.setWindowTitle('pyqt5 Tut')
         # self.setWindowIcon(QIcon('pic.png'))
         self.init_record_loop()
@@ -34,15 +34,20 @@ class Window(QTabWidget):
 
     def init_record_UI(self):
         self.save_dir = None
+        self.input_source = None
 
         record.init_gamepad_capture()
 
+        output_keys_widget = QWidget()
+        self.output_keys_layout = QGridLayout()
+        output_keys_widget.setLayout(self.output_keys_layout)
+
+        menu_widget = QWidget()
         self.record_screen_label = QLabel(self)
         input_selection = self.init_input_selection()
         save_button = QPushButton("Choose...")
         save_button.clicked.connect(self.get_save_dir)
 
-        menu_widget = QWidget()
         menu_layout = QGridLayout()
         menu_layout.setColumnStretch(1, 1)
         menu_layout.setColumnStretch(2, 3)
@@ -53,11 +58,6 @@ class Window(QTabWidget):
         menu_layout.addWidget(save_button, 2, 2)
         menu_layout.addWidget(QWidget())
         menu_widget.setLayout(menu_layout)
-
-        output_keys_widget = QWidget()
-        output_keys_layout = QGridLayout()
-        output_keys_widget.setLayout(output_keys_layout)
-
 
         keys_screen_splitter = QSplitter(Qt.Horizontal)
         keys_screen_splitter.addWidget(self.record_screen_label)
@@ -71,7 +71,8 @@ class Window(QTabWidget):
         self.tab_record.setLayout(main_layout)
 
     def init_input_selection(self):
-        input_selection = QComboBox(self)
+        input_selection = QComboBox()
+        input_selection.activated.connect(self.select_input_source)
         joystick_count = pygame.joystick.get_count()
         for i in range(joystick_count):
             joystick = pygame.joystick.Joystick(i)
@@ -79,7 +80,19 @@ class Window(QTabWidget):
         if joystick_count == 0:
             input_selection.addItem("No connected devices found")
             input_selection.setEnabled(False)
+        elif joystick_count == 1:
+            self.select_input_source(0)
         return input_selection
+
+    def select_input_source(self, idx):
+        self.input_source = pygame.joystick.Joystick(idx)
+        key_labels, key_events = record.capture_gamepad()
+        self.key_event_widgets = []
+        for idx, label in enumerate(key_labels):
+            key_event_widget = QLabel(str(key_events[idx]))
+            self.key_event_widgets.append(key_event_widget)
+            self.output_keys_layout.addWidget(QLabel(label), idx, 1)
+            self.output_keys_layout.addWidget(key_event_widget, idx, 2)
 
     def get_save_dir(self):
         self.save_dir = QFileDialog.getExistingDirectory(self, 'Select save directory')
@@ -89,15 +102,26 @@ class Window(QTabWidget):
         self.updater = QTimer()
         self.updater.setSingleShot(True)
         self.updater.setInterval(100)
-        self.updater.timeout.connect(self.render_screen)
+        self.updater.timeout.connect(self.record_frame)
 
 
     def keyPressEvent(self, e):
         if e.key() == Qt.Key_Escape:
             self.close()
 
+    def record_frame(self):
+        self.record_key_events()
+        self.record_screen()
+        self.updater.start()
+    
+    def record_key_events(self):
+        if not self.input_source:
+            return
+        key_labels, key_events = record.capture_gamepad()
+        for idx, key_event_widget in enumerate(self.key_event_widgets):
+            key_event_widget.setText("{0:.3f}".format(key_events[idx]))
 
-    def render_screen(self):
+    def record_screen(self):
         array_img = record.capture_screen()
         height, width, channel = array_img.shape
         bytes_per_line = 3 * width
@@ -105,7 +129,6 @@ class Window(QTabWidget):
         q_pixmap = QPixmap.fromImage(q_img).scaled(self.record_screen_label.width(), self.record_screen_label.height(), Qt.KeepAspectRatio)
         self.record_screen_label.setPixmap(q_pixmap)
         self.record_screen_label.show()
-        self.updater.start()    
         
 if __name__ == "__main__":
     app = QApplication(sys.argv)
