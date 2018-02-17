@@ -22,17 +22,24 @@ def try_make_dirs(dir):
     except FileExistsError:
         pass
 
-def resize_and_stack_images_in_dir(directory, h, w, d):
+def img_resize_to_int(img, h, w):
+    img = resize(img, (h,w), mode="reflect")
+    img = 255 * img
+    img = img.astype(np.uint8)
+    img = np.expand_dims(img, axis=0)
+    return img
+
+
+def resize_and_stack_images_in_dir(directory, h, w):
     merged_array = None
     for filename in os.listdir(directory):
         if filename.endswith(".npy"):
+            img = np.load("{}/{}".format(directory, filename))
             if not type(merged_array) is np.ndarray:
-                img = np.load("{}/{}".format(directory, filename))
-                merged_array = resize(img, (h,w,d))
+                merged_array = img_resize_to_int(img, h, w)
             else:
-                img = np.load("{}/{}".format(directory, filename))
-                img = resize(img, (h,w,d), mode="reflect")
-                merged_array = np.vstack((merged_array, img))
+                img = img_resize_to_int(img, h, w)
+                merged_array = np.concatenate((merged_array, img), axis=0)
         else:
             continue
     return merged_array

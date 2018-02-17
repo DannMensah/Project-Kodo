@@ -5,6 +5,7 @@ import json
 import numpy as np
 import time
 import pygame
+from skimage.transform import resize
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QLabel, QVBoxLayout,
                              QHBoxLayout, QWidget, QComboBox, QPushButton, QSplitter, QFrame,
                              QTextEdit, QTabWidget, QFileDialog, QGridLayout, QLineEdit)
@@ -13,6 +14,7 @@ from PyQt5.QtCore import (Qt, QTimer)
 
 import recorder
 import emitter
+from utilities import try_make_dirs
 
 class Window(QTabWidget):
 
@@ -128,8 +130,8 @@ class Window(QTabWidget):
 
     def start_recording(self):
         self.frame = 1
-        os.makedirs("{}/images".format(self.save_dir))
-        os.makedirs("{}/key-events".format(self.save_dir))
+        try_make_dirs("{}/images".format(self.save_dir))
+        try_make_dirs("{}/key-events".format(self.save_dir))
         info_dict = {
                 "key_labels": self.key_labels
                     }
@@ -153,12 +155,12 @@ class Window(QTabWidget):
             self.close()
 
     def record_frame(self):
+        self.updater.start()
         key_events = self.record_key_events()
         img = self.record_screen()
         if self.recording:
             self.save_frame(img, key_events)
             self.frame += 1
-        self.updater.start()
     
     def record_key_events(self):
         if not self.input_source:
@@ -169,7 +171,9 @@ class Window(QTabWidget):
         return key_events
 
     def record_screen(self):
-        array_img = recorder.capture_screen()
+        array_img = resize(recorder.capture_screen(), (66, 200), mode="reflect")
+        array_img = 255 * array_img
+        array_img = array_img.astype(np.uint8)
         height, width, channel = array_img.shape
         bytes_per_line = 3 * width
         q_img = QImage(array_img.data, width, height, bytes_per_line, QImage.Format_RGB888)
