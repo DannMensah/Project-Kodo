@@ -140,7 +140,8 @@ class Window(QTabWidget):
 
     def select_model(self, idx):
         self.model_dir = self.available_models[idx]
-        self.model_info = json.load(self.model_dir / "info.json")
+        with open(self.model_dir / "info.json") as info_file:
+            self.model_info = json.load(info_file)
         module_path = str((self.model_dir / "model.py").absolute())
         spec = importlib.util.spec_from_file_location("model", module_path)
         module = importlib.util.module_from_spec(spec)
