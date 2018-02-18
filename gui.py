@@ -11,12 +11,11 @@ from skimage.transform import resize
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QLabel, QVBoxLayout,
                              QHBoxLayout, QWidget, QComboBox, QPushButton, QSplitter, QFrame,
                              QTextEdit, QTabWidget, QFileDialog, QGridLayout, QLineEdit)
-from PyQt5.QtGui import (QPixmap, QImage)
+from PyQt5.QtGui import (QPixmap, QImage, QIntValidator)
 from PyQt5.QtCore import (Qt, QTimer)
 
 import recorder
 from utilities import try_make_dirs
-from controller_mappings import PYGAME_TO_XBOX
 from controllers import PyvJoyXboxController
 
 class Window(QTabWidget):
@@ -32,6 +31,8 @@ class Window(QTabWidget):
         self.available_weights = None 
         self.weights = None
         self.controller = None
+        self.record_h = 66
+        self.record_w = 200
 
         self.tab_record = QWidget()
         self.tab_process = QWidget()
@@ -63,6 +64,12 @@ class Window(QTabWidget):
         output_keys_widget.setLayout(self.output_keys_layout)
 
         menu_widget = QWidget()
+        record_w_widget = QLineEdit(str(self.record_w))
+        record_w_widget.setValidator(QIntValidator())
+        record_w_widget.textChanged.connect(self.record_w_changed)
+        record_h_widget = QLineEdit(str(self.record_h))
+        record_h_widget.setValidator(QIntValidator())
+        record_h_widget.textChanged.connect(self.record_h_changed)
         self.record_screen_label = QLabel(self)
         self.weights_selection = QComboBox()
         self.weights_selection.setEnabled(False)
@@ -80,22 +87,31 @@ class Window(QTabWidget):
         self.predict_button.setCheckable(True)
         self.predict_button.clicked.connect(self.toggle_predict_button)
 
+        resolution_widget = QWidget()
+        resolution_layout = QGridLayout()
+        resolution_layout.addWidget(record_w_widget, 1, 1)
+        resolution_layout.addWidget(record_h_widget, 1, 2)
+        resolution_widget.setLayout(resolution_layout)
+
+
         menu_layout = QGridLayout()
         menu_layout.setColumnStretch(1, 1)
         menu_layout.setColumnStretch(2, 3)
         menu_layout.setColumnStretch(3, 1)
         menu_layout.addWidget(QWidget())
-        menu_layout.addWidget(QLabel("Input device:"), 1, 1, Qt.AlignRight)
-        menu_layout.addWidget(input_selection, 1, 2)
-        menu_layout.addWidget(QLabel("Recordings save directory:"), 2, 1, Qt.AlignRight)
+        menu_layout.addWidget(QLabel("Recording resolution"), 1, 1, Qt.AlignRight)
+        menu_layout.addWidget(resolution_widget, 1, 2)
+        menu_layout.addWidget(QLabel("Input device:"), 2, 1, Qt.AlignRight)
+        menu_layout.addWidget(input_selection, 2, 2)
+        menu_layout.addWidget(QLabel("Recordings save directory:"), 3, 1, Qt.AlignRight)
         menu_layout.addWidget(self.file_path_widget)
-        menu_layout.addWidget(save_button, 2, 3)
-        menu_layout.addWidget(self.record_button, 3, 2)
-        menu_layout.addWidget(QLabel("Model:"), 4, 1, Qt.AlignRight)
-        menu_layout.addWidget(model_selection, 4, 2)
-        menu_layout.addWidget(QLabel("Weights:"), 5, 1, Qt.AlignRight)
-        menu_layout.addWidget(self.weights_selection, 5, 2)
-        menu_layout.addWidget(self.predict_button, 6, 2)
+        menu_layout.addWidget(save_button, 3, 3)
+        menu_layout.addWidget(self.record_button, 4, 2)
+        menu_layout.addWidget(QLabel("Model:"), 5, 1, Qt.AlignRight)
+        menu_layout.addWidget(model_selection, 5, 2)
+        menu_layout.addWidget(QLabel("Weights:"), 6, 1, Qt.AlignRight)
+        menu_layout.addWidget(self.weights_selection, 6, 2)
+        menu_layout.addWidget(self.predict_button, 7, 2)
         menu_layout.addWidget(QWidget())
         menu_widget.setLayout(menu_layout)
 
@@ -109,6 +125,18 @@ class Window(QTabWidget):
         main_layout.addWidget(keys_screen_splitter)
         main_layout.addWidget(menu_widget)
         self.tab_record.setLayout(main_layout)
+
+    def record_w_changed(self, newVal):
+        try:
+            self.record_w = int(newVal)
+        except ValueError:
+            pass
+
+    def record_h_changed(self, newVal):
+        try:
+            self.record_h = int(newVal)
+        except ValueError:
+            pass
 
     def init_input_selection(self):
         input_selection = QComboBox()
@@ -140,14 +168,11 @@ class Window(QTabWidget):
 
     def select_model(self, idx):
         self.model_dir = self.available_models[idx]
-        with open(self.model_dir / "info.json") as info_file:
-            self.model_info = json.load(info_file)
         module_path = str((self.model_dir / "model.py").absolute())
         spec = importlib.util.spec_from_file_location("model", module_path)
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
         self.model = module.Model()
-        self.model.create_model() 
         self.refresh_weights_selection()
 
     def refresh_weights_selection(self):
@@ -156,18 +181,21 @@ class Window(QTabWidget):
         weights_path = self.model_dir / "weights"
         self.weights_selection.clear()
         for weights in weights_path.iterdir():
+            if not weights.is_dir() or weights.name == "__pycache__":
+                continue
             self.weights_selection.addItem(weights.name)
             self.available_weights.append(weights)
         if self.available_weights:
             self.select_weights(0)
 
     def select_weights(self, idx):
-        self.model.model.load_weights(self.available_weights[idx])
+        self.model.load_info(self.available_weights[idx] / "info.json")
+        self.model.create_model()
+        self.model.model.load_weights(self.available_weights[idx] / "weights.h5")
 
     def select_input_source(self, idx):
         self.input_source = pygame.joystick.Joystick(idx)
-        key_labels, key_events = recorder.capture_gamepad()
-        self.key_labels = [PYGAME_TO_XBOX[label] for label in key_labels]
+        self.key_labels, key_events = recorder.capture_gamepad()
 
         self.key_event_widgets = []
         for idx, label in enumerate(self.key_labels):
@@ -177,7 +205,7 @@ class Window(QTabWidget):
             self.output_keys_layout.addWidget(key_event_widget, idx, 2)
 
     def get_save_dir(self):
-        save_dir_str = QFileDialog.getExistingDirectory(self, 'Select save directory')
+        save_dir_str = QFileDialog.getExistingDirectory(self, 'Select save directory', str((Path(os.getcwd()) / "data").absolute()))
         self.file_path_widget.setText(save_dir_str)
         self.save_dir = Path(save_dir_str) 
 
@@ -200,9 +228,9 @@ class Window(QTabWidget):
     def start_predicting(self):
         self.record_button.setEnabled(False)
         self.predicting = True
-        self.controller = PyvJoyXboxController(self.model_info["key_labels"])
+        self.controller = PyvJoyXboxController(self.model.info["key_labels"])
 
-    def stop_prediction(self):
+    def stop_predicting(self):
         self.record_button.setEnabled(True)
         self.predicting = False
         self.controller = None
@@ -262,7 +290,7 @@ class Window(QTabWidget):
         return key_events
 
     def record_screen(self):
-        array_img = resize(recorder.capture_screen(), (66, 200), mode="reflect")
+        array_img = resize(recorder.capture_screen(), (self.record_h, self.record_w), mode="reflect")
         array_img = 255 * array_img
         array_img = array_img.astype(np.uint8)
         height, width, channel = array_img.shape

@@ -2,6 +2,8 @@ import numpy as np
 import mss
 import pygame
 
+from controller_mappings import PYGAME_TO_XBOX
+
 # Captures part of the screen and returns the resulting pixels as a NumPy array
 def capture_screen(capture_screen_x=0, capture_screen_y=40, capture_screen_width=800, capture_screen_height=600):
     # Part of the screen to capture
@@ -44,6 +46,9 @@ def capture_gamepad(gamepad_id=0):
     hats = [joystick.get_hat(i) for hat in range(n_hats)]
     key_events += hats
     key_labels += ["hat_{}".append(i) for i in range(n_hats)]
+    
+    key_labels = [PYGAME_TO_XBOX[label] for label in key_labels]
+
 
     return (key_labels, key_events)
 
