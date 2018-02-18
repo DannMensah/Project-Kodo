@@ -16,7 +16,9 @@ from PyQt5.QtCore import (Qt, QTimer)
 
 import recorder
 from utilities import try_make_dirs
-from controllers import PyvJoyXboxController
+# PyvJoy only works on Windows
+if os.name == 'nt':
+    from controllers import PyvJoyXboxController
 
 class RecordTab(QWidget):
 
@@ -75,6 +77,8 @@ class RecordTab(QWidget):
         self.predict_button.toggle()
         self.predict_button.setCheckable(True)
         self.predict_button.clicked.connect(self.toggle_predict_button)
+        if os.name != 'nt':
+            self.predict_button.setEnabled(False)
 
         resolution_widget = QWidget()
         resolution_layout = QGridLayout()

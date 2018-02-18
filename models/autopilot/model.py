@@ -23,12 +23,11 @@ class Model:
         self.info = None
 
     def process(self, data_folder, input_channels_mask):
-        self.y = stack_npy_files_in_dir(self.model_path / "key-events")
+        self.y = stack_npy_files_in_dir(data_folder / "key-events")
         self.y = self.y[:, input_channels_mask]
-        self.data_folder_name = data_folder.split("/")[-1]
-        save_path = self.model_path / "data" / self.data_name
+        save_path = self.model_path / "data" / data_folder.name
         try_make_dirs(save_path)
-        np.save(self.save_path / "y")
+        np.save(save_path / "y", self.y)
 
         self.X = resize_and_stack_images_in_dir(data_folder / "images", self.img_h, self.img_w)
         np.save(save_path / "X", self.X)
@@ -36,13 +35,13 @@ class Model:
         with open(data_folder / "info.json") as info_file:
             data_info = json.load(info_file)
 
-        key_labels = np.asarray(data_info["key_labels"])[1,input_channels_mask].tolist()
+        key_labels = np.asarray(data_info["key_labels"])[input_channels_mask].tolist()
         self.info = {
                 "key_labels": key_labels
                 }
 
-        with open(self.save_path / "info.json") as info_file:
-            json.dump(self.info)
+        with open(save_path / "info.json") as info_file:
+            json.dump(self.info, info_file)
 
 
     def loss(self, y, y_pred):
@@ -61,7 +60,7 @@ class Model:
         model.add(Dense(100, activation="relu"))
         model.add(Dense(50, activation="relu"))
         model.add(Dense(10, activation="relu"))
-        model.add(Dense(len(self.info["key_labels"]), activation="tanh"))
+        model.add(Dense(len(self.info["key_labels"]), activation="linear"))
         self.model = model
 
     def load_data(self, data_folder_str):
@@ -84,7 +83,6 @@ class Model:
         with open(weights_path / "info.json") as info_file:
             json.dump(self.info)
         
-
     def get_actions(self, img):
         img = img_resize_to_int(img, self.img_h, self.img_w)
         return self.model.predict(img, batch_size=1)[0]

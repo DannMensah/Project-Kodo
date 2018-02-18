@@ -16,7 +16,6 @@ from PyQt5.QtCore import (Qt, QTimer)
 
 import recorder
 from utilities import try_make_dirs
-from controllers import PyvJoyXboxController
 from gui.record_tab import RecordTab
 from gui.process_tab import ProcessTab
 
@@ -26,7 +25,7 @@ class MainWindow(QTabWidget):
         super().__init__()
 
         self.tab_record = RecordTab()
-        self.tab_process = QWidget()
+        self.tab_process = ProcessTab()
 
         self.addTab(self.tab_record, "Record/Predict")
         self.addTab(self.tab_process, "Process")
