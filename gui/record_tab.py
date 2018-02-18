@@ -18,7 +18,7 @@ import recorder
 from utilities import try_make_dirs
 from controllers import PyvJoyXboxController
 
-class Window(QTabWidget):
+class RecordTab(QWidget):
 
     def __init__(self):
         super().__init__()
@@ -34,21 +34,10 @@ class Window(QTabWidget):
         self.record_h = 66
         self.record_w = 200
 
-        self.tab_record = QWidget()
-        self.tab_process = QWidget()
-
-        self.addTab(self.tab_record, "Record/Predict")
-        self.addTab(self.tab_process, "Process")
-        
         self.init_record_UI()
         self.init_record_loop()
 
-        self.setGeometry(1000, 0, 1000, 800)
-        self.setMinimumWidth(300)
-        self.setMinimumHeight(500)
-        self.setWindowTitle('Project Kodo')
         self.updater.start()
-        self.show()
 
     def init_record_UI(self):
         self.save_dir = None
@@ -124,7 +113,7 @@ class Window(QTabWidget):
         main_layout = QVBoxLayout()
         main_layout.addWidget(keys_screen_splitter)
         main_layout.addWidget(menu_widget)
-        self.tab_record.setLayout(main_layout)
+        self.setLayout(main_layout)
 
     def record_w_changed(self, newVal):
         try:
@@ -149,6 +138,7 @@ class Window(QTabWidget):
             input_selection.addItem("No connected devices found")
             input_selection.setEnabled(False)
             self.record_button.setEnabled(False)
+            self.output_keys_layout.addWidget(QLabel("No connected input devices found"))
         elif joystick_count == 1:
             self.select_input_source(0)
         return input_selection
@@ -267,10 +257,6 @@ class Window(QTabWidget):
         self.updater.setInterval(100)
         self.updater.timeout.connect(self.record_frame)
 
-    def keyPressEvent(self, e):
-        if e.key() == Qt.Key_Escape:
-            self.close()
-
     def record_frame(self):
         self.updater.start()
         key_events = self.record_key_events()
@@ -300,8 +286,3 @@ class Window(QTabWidget):
         self.record_screen_label.setPixmap(q_pixmap)
         self.record_screen_label.show()
         return array_img
-        
-if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    Gui = Window()
-    sys.exit(app.exec_())
