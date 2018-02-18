@@ -1,0 +1,8 @@
+numpy
+pygame
+scikit-image
+PyQt5
+mss
+keras
+tensorflow
+h5py
