@@ -18,7 +18,7 @@ class PyvJoyXboxController:
             return 1
         return 0
 
-    def emit_keys(output_values):
+    def emit_keys(self, output_values):
         for idx, value in enumerate(output_values):
             key_label = self.data_key_labels[i]
             if key_label in XBOX_TO_PYVJOY["AXES"].keys():
