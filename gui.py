@@ -1,6 +1,7 @@
 import sys
 import os
 import json
+import importlib
 from pathlib import Path
 
 import numpy as np
@@ -15,6 +16,8 @@ from PyQt5.QtCore import (Qt, QTimer)
 
 import recorder
 from utilities import try_make_dirs
+from controller_mappings import PYGAME_TO_XBOX
+from controllers import PyvJoyXboxController
 
 class Window(QTabWidget):
 
@@ -22,15 +25,19 @@ class Window(QTabWidget):
         super().__init__()
 
         self.recording = False
+        self.predicting = False
         self.frame = 1
-        
+        self.available_models = []
+        self.model_dir = None
+        self.available_weights = None 
+        self.weights = None
+        self.controller = None
+
         self.tab_record = QWidget()
         self.tab_process = QWidget()
-        self.tab_predict = QWidget()
 
-        self.addTab(self.tab_record, "Record")
+        self.addTab(self.tab_record, "Record/Predict")
         self.addTab(self.tab_process, "Process")
-        self.addTab(self.tab_predict, "Predict")
         
         self.init_record_UI()
         self.init_record_loop()
@@ -46,6 +53,9 @@ class Window(QTabWidget):
         self.save_dir = None
         self.input_source = None
 
+        self.record_button = QPushButton("Record")
+        self.predict_button = QPushButton("Predict")
+
         recorder.init_gamepad_capture()
 
         output_keys_widget = QWidget()
@@ -54,15 +64,21 @@ class Window(QTabWidget):
 
         menu_widget = QWidget()
         self.record_screen_label = QLabel(self)
+        self.weights_selection = QComboBox()
+        self.weights_selection.setEnabled(False)
+        self.weights_selection.activated.connect(self.select_weights)
         input_selection = self.init_input_selection()
+        model_selection = self.init_model_selection()
         self.file_path_widget = QLineEdit(os.getcwd())
         self.file_path_widget.setEnabled(False)
         save_button = QPushButton("Choose...")
         save_button.clicked.connect(self.get_save_dir)
-        self.record_button = QPushButton("Record")
         self.record_button.toggle()
         self.record_button.setCheckable(True)
         self.record_button.clicked.connect(self.toggle_record_button)
+        self.predict_button.toggle()
+        self.predict_button.setCheckable(True)
+        self.predict_button.clicked.connect(self.toggle_predict_button)
 
         menu_layout = QGridLayout()
         menu_layout.setColumnStretch(1, 1)
@@ -74,8 +90,13 @@ class Window(QTabWidget):
         menu_layout.addWidget(QLabel("Recordings save directory:"), 2, 1, Qt.AlignRight)
         menu_layout.addWidget(self.file_path_widget)
         menu_layout.addWidget(save_button, 2, 3)
-        menu_layout.addWidget(QWidget())
         menu_layout.addWidget(self.record_button, 3, 2)
+        menu_layout.addWidget(QLabel("Model:"), 4, 1, Qt.AlignRight)
+        menu_layout.addWidget(model_selection, 4, 2)
+        menu_layout.addWidget(QLabel("Weights:"), 5, 1, Qt.AlignRight)
+        menu_layout.addWidget(self.weights_selection, 5, 2)
+        menu_layout.addWidget(self.predict_button, 6, 2)
+        menu_layout.addWidget(QWidget())
         menu_widget.setLayout(menu_layout)
 
         keys_screen_splitter = QSplitter(Qt.Horizontal)
@@ -99,13 +120,53 @@ class Window(QTabWidget):
         if joystick_count == 0:
             input_selection.addItem("No connected devices found")
             input_selection.setEnabled(False)
+            self.record_button.setEnabled(False)
         elif joystick_count == 1:
             self.select_input_source(0)
         return input_selection
 
+    def init_model_selection(self):        
+        model_selection = QComboBox()
+        model_selection.activated.connect(self.select_model)
+        models_path = Path(os.getcwd()) / "models"
+        for model_folder in models_path.iterdir():
+            if not model_folder.is_dir() or model_folder.name == "__pycache__":
+                continue
+            model_selection.addItem(model_folder.name)
+            self.available_models.append(model_folder)
+        if self.available_models:
+            self.select_model(0)     
+        return model_selection
+
+    def select_model(self, idx):
+        self.model_dir = self.available_models[idx]
+        module_path = str((self.model_dir / "model.py").absolute())
+        spec = importlib.util.spec_from_file_location("model", module_path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        self.model = module.Model()
+        self.model.create_model() 
+        self.refresh_weights_selection()
+
+    def refresh_weights_selection(self):
+        self.weights_selection.setEnabled(True)
+        self.available_weights = []
+        weights_path = self.model_dir / "weights"
+        self.weights_selection.clear()
+        for weights in weights_path.iterdir():
+            self.weights_selection.addItem(weights.name)
+            self.available_weights.append(weights)
+        if self.available_weights:
+            self.select_weights(0)
+
+    def select_weights(self, idx):
+        self.model.model.load_weights(self.available_weights[idx])
+
     def select_input_source(self, idx):
         self.input_source = pygame.joystick.Joystick(idx)
-        self.key_labels, key_events = recorder.capture_gamepad()
+        key_labels, key_events = recorder.capture_gamepad()
+        self.key_labels = [PYGAME_TO_XBOX[label] for label in key_labels]
+
         self.key_event_widgets = []
         for idx, label in enumerate(self.key_labels):
             key_event_widget = QLabel(str(key_events[idx]))
@@ -125,11 +186,36 @@ class Window(QTabWidget):
         else:
             self.record_button.setStyleSheet("")
             self.stop_recording()
+
+    def toggle_predict_button(self):
+        if self.predict_button.isChecked():
+            self.predict_button.setStyleSheet("background-color: green")
+            self.start_predicting()
+        else:
+            self.record_button.setStyleSheet("")
+            self.stop_predicting()
+
+    def start_predicting(self):
+        self.record_button.setEnabled(False)
+        self.predicting = True
+        self.controller = PyvJoyXboxController(self.info["key_labels"])
+
+    def stop_prediction(self):
+        self.record_button.setEnabled(True)
+        self.predicting = False
+        self.controller = None
+
+    def take_action(self, img):
+        actions = self.model.get_actions(img)
+        self.controller.emit_keys(actions)
+        
     
     def stop_recording(self):
         self.recording = False
+        self.predict_button.setEnabled(True)
 
     def start_recording(self):
+        self.predict_button.setEnabled(False)
         self.frame = 1
         try_make_dirs(self.save_dir / "images")
         try_make_dirs(self.save_dir / "key-events")
@@ -162,6 +248,8 @@ class Window(QTabWidget):
         if self.recording:
             self.save_frame(img, key_events)
             self.frame += 1
+        elif self.predicting:
+            self.take_action(img)
     
     def record_key_events(self):
         if not self.input_source:

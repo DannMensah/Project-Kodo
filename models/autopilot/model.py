@@ -1,5 +1,7 @@
 import os
+import json
 from pathlib import Path
+from shutil import copyfile
 
 import numpy as np
 from keras.models import Sequential
@@ -7,7 +9,7 @@ from keras.layers import Dense, Flatten, Conv2D
 from keras import optimizers
 from keras import backend as K
 
-from utilities import (stack_npy_files_in_dir, try_make_dirs, resize_and_stack_images_in_dir)
+from utilities import (stack_npy_files_in_dir, try_make_dirs, resize_and_stack_images_in_dir, img_resize_to_int)
 
 class Model:
     def __init__(self):
@@ -15,9 +17,10 @@ class Model:
         self.img_w = 200
         self.img_d = 3
         self.X = None
-        self.y = None
+        self.y = np.empty((1, 21))
         self.data_name = None
         self.model_path = Path(os.path.dirname(os.path.abspath(__file__)))
+        self.info = None
 
     def process(self, data_folder):
         self.y = stack_npy_files_in_dir(self.model_path / "key-events")
@@ -28,6 +31,9 @@ class Model:
 
         self.X = resize_and_stack_images_in_dir(data_folder / "images", self.img_h, self.img_w)
         np.save(save_path / "X", self.X)
+
+        copyfile(data_folder / "info.json", save_path / "info.json")
+        self.info = json.load(data_folder / "info.json")
 
     def loss(self, y, y_pred):
         return K.sqrt(K.sum(K.square(y_pred-y), axis=-1))
@@ -53,9 +59,14 @@ class Model:
         data_folder = Path(data_folder_str)
         self.y = np.load(data_folder / "y.npy")
         self.X = np.load(data_folder / "X.npy")
+        self.info = json.load(data_folder / "info.json")
 
     def train(self, batch_size=50, epochs=100):
         self.model.compile(loss=self.loss, optimizer=optimizers.adam())
         self.model.fit(self.X, self.y, batch_size=batch_size, epochs=epochs, shuffle=True, validation_split=0.2)
         try_make_dirs(self.model_path / "weights")
         self.model.save_weights(self.model_path / "weights" / "{}.h5".format(self.data_folder_name))
+
+    def get_actions(self, img):
+        img = img_resize_to_int(img, self.img_h, self.img_w)
+        return self.model.predict(img, batch_size=1)[0]
