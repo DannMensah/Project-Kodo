@@ -139,6 +139,7 @@ class ProcessTab(QWidget):
         self.model.process(self.data_folder, self.input_channels_mask)
         self.process_button.setChecked(False)
         self.process_button.setEnabled(True)
+        self.process_button.setStyleSheet("")
 
     
 

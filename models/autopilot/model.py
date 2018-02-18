@@ -35,12 +35,12 @@ class Model:
         with open(data_folder / "info.json") as info_file:
             data_info = json.load(info_file)
 
-        key_labels = np.asarray(data_info["key_labels"])[input_channels_mask].tolist()
+        key_labels = np.asarray(data_info["key_labels"])[input_channels_mask]
         self.info = {
-                "key_labels": key_labels
+                "key_labels": key_labels.tolist()
                 }
 
-        with open(save_path / "info.json") as info_file:
+        with open(save_path / "info.json", "w") as info_file:
             json.dump(self.info, info_file)
 
 
