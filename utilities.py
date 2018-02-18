@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 import numpy as np
 from skimage.transform import resize
@@ -7,10 +8,11 @@ def stack_npy_files_in_dir(directory):
     merged_array = None
     for filename in os.listdir(directory):
         if filename.endswith(".npy"):
+            loaded_arr = np.load(directory / filename)
             if not type(merged_array) is np.ndarray:
-                merged_array = np.load("{}/{}".format(directory, filename))
+                merged_array = loaded_arr  
             else:
-                merged_array = np.vstack((merged_array, np.load("{}/{}".format(directory, filename))))
+                merged_array = np.vstack((merged_array, loaded_arr))
         else:
             continue
     return merged_array
@@ -34,7 +36,7 @@ def resize_and_stack_images_in_dir(directory, h, w):
     merged_array = None
     for filename in os.listdir(directory):
         if filename.endswith(".npy"):
-            img = np.load("{}/{}".format(directory, filename))
+            img = np.load(directory / filename)
             if not type(merged_array) is np.ndarray:
                 merged_array = img_resize_to_int(img, h, w)
             else:

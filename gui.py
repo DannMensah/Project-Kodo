@@ -1,6 +1,7 @@
 import sys
 import os
 import json
+from pathlib import Path
 
 import numpy as np
 import time
@@ -13,7 +14,6 @@ from PyQt5.QtGui import (QPixmap, QImage)
 from PyQt5.QtCore import (Qt, QTimer)
 
 import recorder
-import emitter
 from utilities import try_make_dirs
 
 class Window(QTabWidget):
@@ -39,7 +39,6 @@ class Window(QTabWidget):
         self.setMinimumWidth(300)
         self.setMinimumHeight(500)
         self.setWindowTitle('Project Kodo')
-        # self.setWindowIcon(QIcon('pic.png'))
         self.updater.start()
         self.show()
 
@@ -57,6 +56,7 @@ class Window(QTabWidget):
         self.record_screen_label = QLabel(self)
         input_selection = self.init_input_selection()
         self.file_path_widget = QLineEdit(os.getcwd())
+        self.file_path_widget.setEnabled(False)
         save_button = QPushButton("Choose...")
         save_button.clicked.connect(self.get_save_dir)
         self.record_button = QPushButton("Record")
@@ -114,8 +114,9 @@ class Window(QTabWidget):
             self.output_keys_layout.addWidget(key_event_widget, idx, 2)
 
     def get_save_dir(self):
-        self.save_dir = QFileDialog.getExistingDirectory(self, 'Select save directory')
-        self.file_path_widget.setText(self.save_dir)
+        save_dir_str = QFileDialog.getExistingDirectory(self, 'Select save directory')
+        self.file_path_widget.setText(save_dir_str)
+        self.save_dir = Path(save_dir_str) 
 
     def toggle_record_button(self):
         if self.record_button.isChecked():
@@ -130,19 +131,19 @@ class Window(QTabWidget):
 
     def start_recording(self):
         self.frame = 1
-        try_make_dirs("{}/images".format(self.save_dir))
-        try_make_dirs("{}/key-events".format(self.save_dir))
+        try_make_dirs(self.save_dir / "images")
+        try_make_dirs(self.save_dir / "key-events")
         info_dict = {
                 "key_labels": self.key_labels
                     }
-        with open("{}/info.json".format(self.save_dir), "w") as fp:
+        with open(self.save_dir / "info.json", "w") as fp:
             json.dump(info_dict, fp)
         self.recording = True
 
     
     def save_frame(self, image, key_events):
-        np.save("{}/images/image_{}".format(self.save_dir, self.frame), image)
-        np.save("{}/key-events/key-event_{}".format(self.save_dir, self.frame), key_events)
+        np.save(self.save_dir / "image_{}".format(self.frame), image)
+        np.save(self.save_dir / "key-event_{}".format(self.frame), key_events)
 
     def init_record_loop(self):
         self.updater = QTimer()
