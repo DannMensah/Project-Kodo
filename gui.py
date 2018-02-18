@@ -140,6 +140,7 @@ class Window(QTabWidget):
 
     def select_model(self, idx):
         self.model_dir = self.available_models[idx]
+        self.model_info = json.load(self.model_dir / "info.json")
         module_path = str((self.model_dir / "model.py").absolute())
         spec = importlib.util.spec_from_file_location("model", module_path)
         module = importlib.util.module_from_spec(spec)
@@ -198,7 +199,7 @@ class Window(QTabWidget):
     def start_predicting(self):
         self.record_button.setEnabled(False)
         self.predicting = True
-        self.controller = PyvJoyXboxController(self.info["key_labels"])
+        self.controller = PyvJoyXboxController(self.model_info["key_labels"])
 
     def stop_prediction(self):
         self.record_button.setEnabled(True)
