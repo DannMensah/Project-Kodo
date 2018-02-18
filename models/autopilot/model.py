@@ -17,13 +17,14 @@ class Model:
         self.img_w = 200
         self.img_d = 3
         self.X = None
-        self.y = np.empty((1, 21))
+        self.y = None
         self.data_name = None
         self.model_path = Path(os.path.dirname(os.path.abspath(__file__)))
         self.info = None
 
-    def process(self, data_folder):
+    def process(self, data_folder, input_channels_mask):
         self.y = stack_npy_files_in_dir(self.model_path / "key-events")
+        self.y = self.y[:, input_channels_mask]
         self.data_folder_name = data_folder.split("/")[-1]
         save_path = self.model_path / "data" / self.data_name
         try_make_dirs(save_path)
@@ -32,8 +33,17 @@ class Model:
         self.X = resize_and_stack_images_in_dir(data_folder / "images", self.img_h, self.img_w)
         np.save(save_path / "X", self.X)
 
-        copyfile(data_folder / "info.json", save_path / "info.json")
-        self.info = json.load(data_folder / "info.json")
+        with open(data_folder / "info.json") as info_file:
+            data_info = json.load(info_file)
+
+        key_labels = np.asarray(data_info["key_labels"])[1,input_channels_mask].tolist()
+        self.info = {
+                "key_labels": key_labels
+                }
+
+        with open(self.save_path / "info.json") as info_file:
+            json.dump(self.info)
+
 
     def loss(self, y, y_pred):
         return K.sqrt(K.sum(K.square(y_pred-y), axis=-1))
@@ -51,7 +61,7 @@ class Model:
         model.add(Dense(100, activation="relu"))
         model.add(Dense(50, activation="relu"))
         model.add(Dense(10, activation="relu"))
-        model.add(Dense(self.y.shape[1], activation="tanh"))
+        model.add(Dense(len(self.info["key_labels"]), activation="tanh"))
         self.model = model
 
     def load_data(self, data_folder_str):
@@ -61,11 +71,19 @@ class Model:
         self.X = np.load(data_folder / "X.npy")
         self.info = json.load(data_folder / "info.json")
 
-    def train(self, batch_size=50, epochs=100):
+    def load_info(self, info_path):
+        with open(info_path) as info_file:
+            self.info = json.load(info_file)
+
+    def train(self, batch_size=50, epochs=100, weights_name="default_weights"):
         self.model.compile(loss=self.loss, optimizer=optimizers.adam())
         self.model.fit(self.X, self.y, batch_size=batch_size, epochs=epochs, shuffle=True, validation_split=0.2)
         try_make_dirs(self.model_path / "weights")
-        self.model.save_weights(self.model_path / "weights" / "{}.h5".format(self.data_folder_name))
+        weights_path = self.model_path / "weights" / weights_name
+        self.model.save_weights(weights_path / "weights.h5")
+        with open(weights_path / "info.json") as info_file:
+            json.dump(self.info)
+        
 
     def get_actions(self, img):
         img = img_resize_to_int(img, self.img_h, self.img_w)
