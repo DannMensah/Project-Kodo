@@ -69,7 +69,7 @@ class Model(KodoModel):
         model.add(Dropout(0.5))
         model.add(Dense(10, activation="relu"))
         model.add(Dropout(0.5))
-        model.add(Dense(len(self.info["key_labels"]), activation="linear"))
+        model.add(Dense(len(self.info["key_labels"]), activation="softsign"))
         self.model = model
 
     def train(self, batch_size=50, epochs=100, weights_name="default_weights"):
