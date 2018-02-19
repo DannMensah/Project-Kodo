@@ -8,6 +8,7 @@ import numpy as np
 import keras
 from keras.models import Sequential
 from keras.layers import Dense, Flatten, Conv2D, Dropout
+from keras.layers.normalization import BatchNormalization
 from keras import optimizers
 from keras import backend as K
 
@@ -62,12 +63,16 @@ class Model(KodoModel):
         model.add(Conv2D(64, kernel_size=(3, 3), activation="relu"))
         model.add(Flatten())
         model.add(Dense(1164, activation="relu"))
+        model.add(BatchNormalization())
         model.add(Dropout(0.5))
         model.add(Dense(100, activation="relu"))
+        model.add(BatchNormalization())
         model.add(Dropout(0.5))
         model.add(Dense(50, activation="relu"))
+        model.add(BatchNormalization())
         model.add(Dropout(0.5))
         model.add(Dense(10, activation="relu"))
+        model.add(BatchNormalization())
         model.add(Dropout(0.5))
         model.add(Dense(len(self.info["key_labels"]), activation="softsign"))
         self.model = model
