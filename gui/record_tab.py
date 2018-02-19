@@ -35,6 +35,8 @@ class RecordTab(QWidget):
         self.controller = None
         self.record_h = 66
         self.record_w = 200
+        self.capture_h = 600
+        self.capture_w = 800
 
         self.init_record_UI()
         self.init_record_loop()
@@ -57,10 +59,18 @@ class RecordTab(QWidget):
         menu_widget = QWidget()
         record_w_widget = QLineEdit(str(self.record_w))
         record_w_widget.setValidator(QIntValidator())
-        record_w_widget.textChanged.connect(self.record_w_changed)
+        record_w_widget.textChanged.connect(lambda new_val: self.line_edit_value_changed(new_val, "record_w"))
         record_h_widget = QLineEdit(str(self.record_h))
         record_h_widget.setValidator(QIntValidator())
-        record_h_widget.textChanged.connect(self.record_h_changed)
+        record_h_widget.textChanged.connect(lambda new_val: self.line_edit_value_changed(new_val, "record_h"))
+
+        capture_w_widget = QLineEdit(str(self.capture_w))
+        capture_w_widget.setValidator(QIntValidator())
+        capture_w_widget.textChanged.connect(lambda new_val: self.line_edit_value_changed(new_val, "capture_w"))
+        capture_h_widget = QLineEdit(str(self.capture_h))
+        capture_h_widget.setValidator(QIntValidator())
+        capture_h_widget.textChanged.connect(lambda new_val: self.line_edit_value_changed(new_val, "capture_h"))
+
         self.record_screen_label = QLabel(self)
         self.weights_selection = QComboBox()
         self.weights_selection.setEnabled(False)
@@ -82,29 +92,36 @@ class RecordTab(QWidget):
 
         resolution_widget = QWidget()
         resolution_layout = QGridLayout()
-        resolution_layout.addWidget(record_w_widget, 1, 1)
-        resolution_layout.addWidget(record_h_widget, 1, 2)
+        resolution_layout.addWidget(record_w_widget, 1, 1, Qt.AlignRight)
+        resolution_layout.addWidget(record_h_widget, 1, 2, Qt.AlignLeft)
         resolution_widget.setLayout(resolution_layout)
 
+        capture_size_widget = QWidget()
+        capture_size_layout = QGridLayout()
+        capture_size_layout.addWidget(capture_w_widget, 1, 1, Qt.AlignRight)
+        capture_size_layout.addWidget(capture_h_widget, 1, 2, Qt.AlignLeft)
+        capture_size_widget.setLayout(capture_size_layout)
 
         menu_layout = QGridLayout()
         menu_layout.setColumnStretch(1, 1)
         menu_layout.setColumnStretch(2, 3)
         menu_layout.setColumnStretch(3, 1)
         menu_layout.addWidget(QWidget())
-        menu_layout.addWidget(QLabel("Recording resolution"), 1, 1, Qt.AlignRight)
-        menu_layout.addWidget(resolution_widget, 1, 2)
-        menu_layout.addWidget(QLabel("Input device:"), 2, 1, Qt.AlignRight)
-        menu_layout.addWidget(input_selection, 2, 2)
-        menu_layout.addWidget(QLabel("Recordings save directory:"), 3, 1, Qt.AlignRight)
+        menu_layout.addWidget(QLabel("Capture screen size"), 1, 1, Qt.AlignRight)
+        menu_layout.addWidget(capture_size_widget, 1, 2)
+        menu_layout.addWidget(QLabel("Recording resolution"), 2, 1, Qt.AlignRight)
+        menu_layout.addWidget(resolution_widget, 2, 2)
+        menu_layout.addWidget(QLabel("Input device:"), 3, 1, Qt.AlignRight)
+        menu_layout.addWidget(input_selection, 3, 2)
+        menu_layout.addWidget(QLabel("Recordings save directory:"), 4, 1, Qt.AlignRight)
         menu_layout.addWidget(self.file_path_widget)
-        menu_layout.addWidget(save_button, 3, 3)
-        menu_layout.addWidget(self.record_button, 4, 2)
-        menu_layout.addWidget(QLabel("Model:"), 5, 1, Qt.AlignRight)
-        menu_layout.addWidget(model_selection, 5, 2)
-        menu_layout.addWidget(QLabel("Weights:"), 6, 1, Qt.AlignRight)
-        menu_layout.addWidget(self.weights_selection, 6, 2)
-        menu_layout.addWidget(self.predict_button, 7, 2)
+        menu_layout.addWidget(save_button, 4, 3)
+        menu_layout.addWidget(self.record_button, 5, 2)
+        menu_layout.addWidget(QLabel("Model:"), 6, 1, Qt.AlignRight)
+        menu_layout.addWidget(model_selection, 6, 2)
+        menu_layout.addWidget(QLabel("Weights:"), 7, 1, Qt.AlignRight)
+        menu_layout.addWidget(self.weights_selection, 7, 2)
+        menu_layout.addWidget(self.predict_button, 8, 2)
         menu_layout.addWidget(QWidget())
         menu_widget.setLayout(menu_layout)
 
@@ -119,15 +136,11 @@ class RecordTab(QWidget):
         main_layout.addWidget(menu_widget)
         self.setLayout(main_layout)
 
-    def record_w_changed(self, newVal):
+    def line_edit_value_changed(self, new_val, variable_name):
         try:
-            self.record_w = int(newVal)
-        except ValueError:
-            pass
-
-    def record_h_changed(self, newVal):
-        try:
-            self.record_h = int(newVal)
+            # Segmentation fault if screen_capture_size set to 1
+            if int(new_val) > 1:
+                setattr(self, variable_name, int(new_val))
         except ValueError:
             pass
 
@@ -280,7 +293,10 @@ class RecordTab(QWidget):
         return key_events
 
     def record_screen(self):
-        array_img = resize(recorder.capture_screen(), (self.record_h, self.record_w), mode="reflect")
+        array_img = resize(recorder.capture_screen(capture_screen_width=self.capture_w, 
+                                                   capture_screen_height=self.capture_h), 
+                                                   (self.record_h, self.record_w), 
+                                                   mode="reflect")
         array_img = 255 * array_img
         array_img = array_img.astype(np.uint8)
         height, width, channel = array_img.shape
