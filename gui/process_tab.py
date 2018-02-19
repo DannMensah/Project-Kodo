@@ -98,10 +98,9 @@ class ProcessTab(QWidget):
         self.input_channels_mask = [True] * len(key_labels)
         self.clear_layout(self.channels_layout)
         for idx, label in enumerate(key_labels):
-            #self.channels_layout.addWidget(QLabel(label), idx, 1)
             checkbox_widget = QCheckBox(label)
             checkbox_widget.setChecked(True)
-            checkbox_widget.stateChanged.connect(lambda checked: self.checkbox_checked(checked, idx))
+            checkbox_widget.stateChanged.connect(lambda checked, idx=idx: self.checkbox_checked(checked, idx))
             self.channels_layout.addWidget(checkbox_widget)
 
     def checkbox_checked(self, checked, idx):
