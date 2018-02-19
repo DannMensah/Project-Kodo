@@ -32,19 +32,21 @@ class Model(KodoModel):
         try_make_dirs(save_path)
         np.save(save_path / "y", self.y)
     
-        self.X = resize_and_stack_images_in_dir(data_folder / "images", self.img_h, self.img_w, img_update_callback)
-        np.save(save_path / "X", self.X)
-
         with open(data_folder / "info.json") as info_file:
             data_info = json.load(info_file)
 
         key_labels = np.asarray(data_info["key_labels"])[input_channels_mask]
+        print(key_labels)
+        print(input_channels_mask)
         self.info = {
                 "key_labels": key_labels.tolist()
                 }
 
         with open(save_path / "info.json", "w") as info_file:
             json.dump(self.info, info_file)
+        self.X = resize_and_stack_images_in_dir(data_folder / "images", self.img_h, self.img_w, img_update_callback)
+        np.save(save_path / "X", self.X)
+
 
 
     def loss(self, y, y_pred):
