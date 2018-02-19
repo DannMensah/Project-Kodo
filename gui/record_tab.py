@@ -265,8 +265,8 @@ class RecordTab(QWidget):
 
     
     def save_frame(self, image, key_events):
-        np.save(self.save_dir / "image_{}".format(self.frame), image)
-        np.save(self.save_dir / "key-event_{}".format(self.frame), key_events)
+        np.save(self.save_dir / "images" / "image_{}".format(self.frame), image)
+        np.save(self.save_dir / "key-events" / "key-event_{}".format(self.frame), key_events)
 
     def init_record_loop(self):
         self.updater = QTimer()
