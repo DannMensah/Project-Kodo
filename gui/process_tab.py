@@ -5,7 +5,8 @@ from pathlib import Path
 
 from PyQt5.QtWidgets import (QWidget, QSplitter, QLabel, QGridLayout,
                              QVBoxLayout, QComboBox, QPushButton, QLineEdit,
-                             QCheckBox)
+                             QCheckBox, QApplication)
+from PyQt5.QtGui import (QPixmap, QImage) 
 from PyQt5.QtCore import (Qt)
 
 class ProcessTab(QWidget):
@@ -134,9 +135,20 @@ class ProcessTab(QWidget):
             self.process_button.setStyleSheet("background-color: blue")
             self.process_button.setEnabled(False)
             self.process()
-    
+
+    def update_image(self, img):
+        height, width, channel = img.shape
+        bytes_per_line = 3 * width
+        q_img = QImage(img.data, width, height, bytes_per_line, QImage.Format_RGB888)
+        q_pixmap = QPixmap.fromImage(q_img).scaled(self.screen_label.width(), 
+                                                   self.screen_label.height(), 
+                                                   Qt.KeepAspectRatio)
+        self.screen_label.setPixmap(q_pixmap)
+        self.screen_label.show()
+        QApplication.processEvents()
+
     def process(self):
-        self.model.process(self.data_folder, self.input_channels_mask)
+        self.model.process(self.data_folder, self.input_channels_mask, img_update_callback=self.update_image)
         self.process_button.setChecked(False)
         self.process_button.setEnabled(True)
         self.process_button.setStyleSheet("")

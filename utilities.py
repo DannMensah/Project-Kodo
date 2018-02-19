@@ -1,5 +1,8 @@
 import os
 from pathlib import Path
+import webbrowser
+import threading
+import socket
 
 import numpy as np
 from skimage.transform import resize
@@ -32,17 +35,31 @@ def img_resize_to_int(img, h, w):
     return img
 
 
-def resize_and_stack_images_in_dir(directory, h, w):
+def resize_and_stack_images_in_dir(directory, h, w, img_update_callback=None):
     merged_array = None
     for filename in os.listdir(directory):
         if filename.endswith(".npy"):
             img = np.load(directory / filename)
             if not type(merged_array) is np.ndarray:
                 merged_array = img_resize_to_int(img, h, w)
+                img_update_callback(merged_array[0, :, :, :])
             else:
                 img = img_resize_to_int(img, h, w)
                 merged_array = np.concatenate((merged_array, img), axis=0)
+                img_update_callback(img[0, :, :, :])
+
         else:
             continue
     return merged_array
+
+def launch_tensorboard(log_dir):
+    t = threading.Thread(target=run_tensorboard_server, args=([log_dir]))
+    t.start()
+
+    url = "http://{}:6006/".format(socket.gethostname())
+    webbrowser.open(url, new=0, autoraise=True)
+    
+def run_tensorboard_server(log_dir):
+    print(log_dir)
+    os.system("tensorboard --logdir=" + log_dir + " --port 6006")
 

@@ -18,6 +18,7 @@ import recorder
 from utilities import try_make_dirs
 from gui.record_tab import RecordTab
 from gui.process_tab import ProcessTab
+from gui.train_tab import TrainTab
 
 class MainWindow(QTabWidget):
 
@@ -26,14 +27,16 @@ class MainWindow(QTabWidget):
 
         self.tab_record = RecordTab()
         self.tab_process = ProcessTab()
+        self.tab_train = TrainTab()
 
         self.addTab(self.tab_record, "Record/Predict")
         self.addTab(self.tab_process, "Process")
+        self.addTab(self.tab_train, "Train")
         
         self.setGeometry(1000, 0, 1000, 800)
         self.setMinimumWidth(300)
         self.setMinimumHeight(500)
-        self.setWindowTitle('Project Kodo')
+        self.setWindowTitle("Project Kodo")
         self.show()
 
     def keyPressEvent(self, e):
