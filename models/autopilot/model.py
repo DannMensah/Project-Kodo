@@ -10,17 +10,17 @@ from keras import optimizers
 from keras import backend as K
 
 from utilities import (stack_npy_files_in_dir, try_make_dirs, resize_and_stack_images_in_dir, img_resize_to_int)
+from models.template import KodoModel
 
-class Model:
+class Model(KodoModel):
     def __init__(self):
+        super(Model, self).__init__()
+
         self.img_h = 66
         self.img_w = 200
         self.img_d = 3
-        self.X = None
-        self.y = None
         self.data_name = None
         self.model_path = Path(os.path.dirname(os.path.abspath(__file__)))
-        self.info = None
 
     def process(self, data_folder, input_channels_mask):
         self.y = stack_npy_files_in_dir(data_folder / "key-events")
@@ -62,17 +62,6 @@ class Model:
         model.add(Dense(10, activation="relu"))
         model.add(Dense(len(self.info["key_labels"]), activation="linear"))
         self.model = model
-
-    def load_data(self, data_folder_str):
-        self.data_folder_name = data_folder_str.split("/")[-1]
-        data_folder = Path(data_folder_str)
-        self.y = np.load(data_folder / "y.npy")
-        self.X = np.load(data_folder / "X.npy")
-        self.info = json.load(data_folder / "info.json")
-
-    def load_info(self, info_path):
-        with open(info_path) as info_file:
-            self.info = json.load(info_file)
 
     def train(self, batch_size=50, epochs=100, weights_name="default_weights"):
         self.model.compile(loss=self.loss, optimizer=optimizers.adam())
