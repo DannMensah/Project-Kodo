@@ -3,4 +3,9 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-data
+data/*
+models/autopilot/data/*
+models/autopilot/weights/*
+!models/autopilot/weights/.gitkeep
+!data/.gitkeep
+!models/autopilot/data/.gitkeep
