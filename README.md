@@ -22,7 +22,7 @@ In its current state, the GUI is meant to simply aid the training process by pro
 - Tested on `python 3.6.4` on Windows 10, MacOS Sierra and Ubuntu 14.04
 - Install [Microsoft Visual C++](http://landinghub.visualstudio.com/visual-cpp-build-tools)
 - Run `pip install -r requirements` to install the required python packages
-- If you have a system with a [CUDA-enabled GPU](https://developer.nvidia.com/cuda-gpus), follow the instructions [here](http://landinghub.visualstudio.com/visual-cpp-build-tools) to install tensorflow-gpu
+- If you have a system with a [CUDA-enabled GPU](https://developer.nvidia.com/cuda-gpus), follow the instructions [here](https://www.tensorflow.org/install/) to install tensorflow-gpu
 - Xbox 360 wireless controller drivers need to be installed for recording. The specific driver depends on your platform.
 - [vJoy](http://vjoystick.sourceforge.net) required for prediction (Only works on Windows)
 - [x360ce](http://www.x360ce.com) is also required for prediction. (Only works on Windows as well)
