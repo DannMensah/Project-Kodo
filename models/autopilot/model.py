@@ -45,7 +45,7 @@ class Model(KodoModel):
 
         with open(save_path / "info.json", "w") as info_file:
             json.dump(self.info, info_file)
-        self.X = resize_and_stack_images_in_dir(data_folder / "images", self.img_h, self.img_w, img_update_callback)
+        self.X = resize_and_stack_images_in_dir(data_folder / "images", self.img_h, self.img_w, img_update_callback, scaled=True)
         np.save(save_path / "X", self.X)
 
 
@@ -53,33 +53,50 @@ class Model(KodoModel):
     def loss(self, y, y_pred):
         return K.sqrt(K.sum(K.square(y_pred-y), axis=-1))
 
-    def create_model(self):
+    def create_model(self, dropout_probability=0.5):
         model = Sequential()
+
         model.add(Conv2D(24, kernel_size=(5, 5), strides=(2, 2), activation="relu", 
                          input_shape=(self.img_h, self.img_w, self.img_d)))
         model.add(BatchNormalization())
+        model.add(Dropout(dropout_probability))
+
         model.add(Conv2D(36, kernel_size=(5, 5), strides=(2, 2), activation="relu"))
         model.add(BatchNormalization())
+        model.add(Dropout(dropout_probability))
+
         model.add(Conv2D(48, kernel_size=(5, 5), strides=(2, 2), activation="relu"))
         model.add(BatchNormalization())
+        model.add(Dropout(dropout_probability))
+
         model.add(Conv2D(64, kernel_size=(3, 3), activation="relu"))
         model.add(BatchNormalization())
+        model.add(Dropout(dropout_probability))
+
         model.add(Conv2D(64, kernel_size=(3, 3), activation="relu"))
         model.add(BatchNormalization())
+        model.add(Dropout(dropout_probability))
+
         model.add(Flatten())
+
         model.add(Dense(1164, activation="relu"))
         model.add(BatchNormalization())
-        model.add(Dropout(0.5))
+        model.add(Dropout(dropout_probability))
+
         model.add(Dense(100, activation="relu"))
         model.add(BatchNormalization())
-        model.add(Dropout(0.5))
+        model.add(Dropout(dropout_probability))
+
         model.add(Dense(50, activation="relu"))
         model.add(BatchNormalization())
-        model.add(Dropout(0.5))
+        model.add(Dropout(dropout_probability))
+
         model.add(Dense(10, activation="relu"))
         model.add(BatchNormalization())
-        model.add(Dropout(0.5))
+        model.add(Dropout(dropout_probability))
+
         model.add(Dense(len(self.info["key_labels"]), activation="softsign"))
+
         self.model = model
 
     def train(self, batch_size=50, epochs=100, weights_name="default_weights"):
@@ -99,7 +116,7 @@ class Model(KodoModel):
             json.dump(self.info, info_file)
         
     def get_actions(self, img):
-        img = img_resize_to_int(img, self.img_h, self.img_w)
+        img = img_resize_to_int(img, self.img_h, self.img_w, scaled=True)
         return self.model.predict(img, batch_size=1)[0]
 
 

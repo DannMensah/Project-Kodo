@@ -197,7 +197,7 @@ class RecordTab(QWidget):
 
     def select_weights(self, idx):
         self.model.load_info(self.available_weights[idx] / "info.json")
-        self.model.create_model()
+        self.model.create_model(dropout_probability=0)
         self.model.model.load_weights(self.available_weights[idx] / "weights.h5")
 
     def select_input_source(self, idx):
