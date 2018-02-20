@@ -117,7 +117,7 @@ class Model(KodoModel):
         
     def get_actions(self, img):
         img = img_resize_to_int(img, self.img_h, self.img_w, scaled=True)
-        return self.model.predict(img, batch_size=1)[0]
+        return self.model.predict(np.expand_dims(img, axis=0), batch_size=1)[0]
 
 
 
