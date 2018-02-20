@@ -1,6 +1,7 @@
 # Project-Kodo
 The goal of Project Kodo was originally to be an autonomous driving agent for GTA V. As the idea progressed however, it became more of a platform for easy training and usage of machine learning agents in games in general. It's constructed using a modular architecture that aims to allow easy addition of models, input devices and action broadcasting methods.
 
+
 ## Examples
 I've used the platform to train an autonomous driving agent for GTA V. Below are some results using an implementation of [NVIDIA's autopilot model](https://arxiv.org/pdf/1604.07316.pdf). 
 
@@ -10,10 +11,12 @@ As can be seen, the model does make some mistakes. It seems to be able to recove
  
 [![Video of autonomous driving](https://img.youtube.com/vi/hISzqO2uPwo/0.jpg)](https://www.youtube.com/watch?v=hISzqO2uPwo)
 
+
 ## Usage
 In its current state, the GUI is meant to simply aid the training process by providing a quick interface. It's not pretty, and it WILL break if invalid data is provided. That being said, I've tried to remove obvious sources of user error, and a user with some knowledge of the underlying process should be able to use the program without any problems.
 
-##### Installation
+
+### Installation
 - 64-bit version of Python is required!
 - Tested on `python 3.6.4` on Windows 10, MacOS Sierra and Ubuntu 14.04
 - Install [Microsoft Visual C++](http://landinghub.visualstudio.com/visual-cpp-build-tools)
@@ -23,10 +26,12 @@ In its current state, the GUI is meant to simply aid the training process by pro
 - [vJoy](http://vjoystick.sourceforge.net) required for prediction (Only works on Windows)
 - [x360ce](http://www.x360ce.com) is also required for prediction. (Only works on Windows as well)
 
-##### Running
+
+### Running
 Run `python run.py` in the project's root folder
 
-##### Recording
+
+### Recording
 
 ![recording](/screenshots/recording.png?raw=true)
 
@@ -38,18 +43,26 @@ The following recording parameters can be set:
 - **Input device**: The device, the output of which is used as the target of the model
 - **Recording save directory**: The folder to which the recorded data is saved. **NOTE:** The data has to be located in `Project-Kodo/data` to be used in later steps.
 
-##### Processing
+
+
+### Processing
 ![processing](/screenshots/processing.png?raw=true)
 The processing tab provides an easy way to generate training data for a specific model. A screen rendering the processed data is shown on the left during processing, though it can be turned off to improve performance. On the right, a list of checkboxes next to each output channel of the controller used in the raw data can be used to keep only certain inputs in the training data for the model.
 
-##### Training
+
+
+### Training
 ![training](/screenshots/training.png?raw=true)
 In the training tab, the user can set basic hyperparameters for training the model, as well as a name for the named weights. Starting the training also opens a Tensorboard console that can be used for following the training process. **NOTE:** In the beginning the page will probably not work. Make sure to refresh the page after the first training epoch has been completed to see the actual console.
 
-##### Predicting
+
+
+### Predicting
 **!!Prediction currently only works on Windows!!**
 
 Prediction can be done in the same tab as recording. To start predicting, run x360ce and set the vJoy controller. To predict, select the model and the associated set of weights to be used. The platform will then capture the image from the defined area and use the model to predict the outputs. Finally it uses PyvJoy and x360ce to emit the controls to the game.
+
+
 
 ## Adding models
 The model API is still under work. Currently each model needs to subclass `models.template.KodoModel` and have the following methods:
@@ -58,6 +71,8 @@ The model API is still under work. Currently each model needs to subclass `model
 - `create_model()`, which creates the actual model and sets it to `self.model`
 - `train(batch_size, epochs, weights_name)`, which trains the model and saves the resulting set of weights and associated info to `models/[model_name]/weights/[weights_name]`
 - `get_actions(img)`, which returns the model's prediction given an input image
+
+
 
 ## Future Work
 - Make it easier to add new controllers/keyboards
