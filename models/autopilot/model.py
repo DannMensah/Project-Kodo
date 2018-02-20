@@ -1,6 +1,8 @@
 import os
 import json
 import threading
+import math
+import random
 from pathlib import Path
 from shutil import copyfile
 
@@ -12,7 +14,7 @@ from keras.layers.normalization import BatchNormalization
 from keras import optimizers
 from keras import backend as K
 
-from utilities import (stack_npy_files_in_dir, try_make_dirs, resize_and_stack_images_in_dir, 
+from utilities import (stack_npy_files_in_dir, try_make_dirs,  
                        img_resize_to_int, launch_tensorboard)
 from models.template import KodoModel
 
@@ -26,29 +28,25 @@ class Model(KodoModel):
         self.data_name = None
         self.model_path = Path(os.path.dirname(os.path.abspath(__file__)))
 
-    def process(self, data_folder, input_channels_mask, img_update_callback=None):
-        self.y = stack_npy_files_in_dir(data_folder / "key-events")
-        self.y = self.y[:, input_channels_mask]
-        save_path = self.model_path / "data" / data_folder.name
-        try_make_dirs(save_path)
-        np.save(save_path / "y", self.y)
-    
+    def process(self, data_folder, input_channels_mask, img_update_callback=None):    
         with open(data_folder / "info.json") as info_file:
             data_info = json.load(info_file)
-
         key_labels = np.asarray(data_info["key_labels"])[input_channels_mask]
-        print(key_labels)
-        print(input_channels_mask)
         self.info = {
                 "key_labels": key_labels.tolist()
                 }
 
+        self.X, self.y = self.stack_arrays(data_folder / "key-events", 
+                                           data_folder / "images", 
+                                           img_update_callback)
+        self.y = self.y[:, input_channels_mask]
+
+        save_path = self.model_path / "data" / data_folder.name
+        try_make_dirs(save_path)
+        np.save(save_path / "y", self.y)
+        np.save(save_path / "X", self.X)
         with open(save_path / "info.json", "w") as info_file:
             json.dump(self.info, info_file)
-        self.X = resize_and_stack_images_in_dir(data_folder / "images", self.img_h, self.img_w, img_update_callback, scaled=True)
-        np.save(save_path / "X", self.X)
-
-
 
     def loss(self, y, y_pred):
         return K.sqrt(K.sum(K.square(y_pred-y), axis=-1))
@@ -119,5 +117,30 @@ class Model(KodoModel):
         img = img_resize_to_int(img, self.img_h, self.img_w, scaled=True)
         return self.model.predict(np.expand_dims(img, axis=0), batch_size=1)[0]
 
+    def stack_arrays(self, key_events_dir, images_dir, img_update_callback=None):
+        images = []
+        outputs = []
+        for filename in os.listdir(key_events_dir):
+            if filename.endswith(".npy"):
+                frame_idx = filename.split("_")[1].split(".")[0]
+                output = np.load(key_events_dir / "key-event_{}.npy".format(frame_idx))
+                if self.img_is_dropped(output):
+                    continue
+                img  = np.load(images_dir / "image_{}.npy".format(frame_idx))
+                img_update_callback(img)
+                img = img_resize_to_int(img, self.img_h, self.img_w, scaled=True)
+                images.append(img)
+                outputs.append(output)
+        X = np.stack(images, axis=0)
+        y = np.stack(outputs, axis=0)
+        return X, y
+
+    def turning_dropping_function(self, x):
+        return (1 / ( 1 + math.exp(-10*(x - 0.2))))
+
+    def img_is_dropped(self, actions):
+        turning_magnitude = abs(actions[0])
+        transformed_magnitude = self.turning_dropping_function(turning_magnitude)
+        return random.random() > transformed_magnitude
 
 
