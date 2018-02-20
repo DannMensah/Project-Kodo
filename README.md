@@ -3,11 +3,11 @@ The goal of Project Kodo was originally to be an autonomous driving agent for GT
 
 
 ## Examples
-I've used the platform to train an autonomous driving agent for GTA V. Below are some results using an implementation of [NVIDIA's autopilot model](https://arxiv.org/pdf/1604.07316.pdf). 
+I've used the platform to train an autonomous driving agent for GTA V. Below are some results using an implementation of [NVIDIA's autopilot model](https://arxiv.org/pdf/1604.07316.pdf). The agent drives solely based on image data without any other inputs from the game.
 
 The model was trained on about an hour of training data, which was collected by driving around the game world. During pre-processing, frames with little turning are dropped, as per the original paper. To do this, a logistic function is used to weigh the magnitude of the left stick's X-axis in each frame, and frames where the magnitude is larger, are more likely to not get dropped out. This turned out to be VERY important. The model seen in the video below was trained using a batch size of 32 for 300 epochs, with a training dataset size of about 2500. The original data, without dropping frames with straight driving, was about 30000 frames. Though getting the model right took quite a while, training took only 15 minutes on a NVIDIA P5000.
 
-As can be seen, the model does make some mistakes. It seems to be able to recover surprisingly well, given that the training data doesn't include a lot of "mistakes".
+As can be seen, the agent does make some mistakes. Still, it seems to be able to recover surprisingly well, considering that the training data doesn't include a lot of "mistakes".
  
  #### Video:
 [![Video of autonomous driving](https://img.youtube.com/vi/hISzqO2uPwo/0.jpg)](https://www.youtube.com/watch?v=hISzqO2uPwo)
