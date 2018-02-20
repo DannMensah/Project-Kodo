@@ -32,24 +32,21 @@ def img_resize_to_int(img, h, w, scaled=False):
     if not scaled:
         img = 255 * img
         img = img.astype(np.uint8)
-    img = np.expand_dims(img, axis=0)
     return img
 
 
 def resize_and_stack_images_in_dir(directory, h, w, img_update_callback=None, scaled=False):
     merged_array = None
+    images = []
     for filename in os.listdir(directory):
         if filename.endswith(".npy"):
             img = np.load(directory / filename)
             img_update_callback(img)
             img = img_resize_to_int(img, h, w, scaled)
-            if not type(merged_array) is np.ndarray:
-                merged_array = img            
-            else:
-                merged_array = np.concatenate((merged_array, img), axis=0)
-
+            images.append(img)        
         else:
             continue
+    merged_array = np.stack(images, axis=0)
     return merged_array
 
 def launch_tensorboard(log_dir):
