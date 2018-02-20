@@ -136,7 +136,7 @@ class Model(KodoModel):
         return X, y
 
     def turning_dropping_function(self, x):
-        return (1 / ( 1 + math.exp(-10*(x - 0.2))))
+        return (1 / ( 1 + math.exp(-15*(x - 0.4))))
 
     def img_is_dropped(self, actions):
         turning_magnitude = abs(actions[0])
