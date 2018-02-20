@@ -20,6 +20,7 @@ class ProcessTab(QWidget):
         self.model = None
         self.input_channels_mask = []
         self.input_info = None
+        self.show_data_screen = True
 
         self.initUI()
     
@@ -30,8 +31,19 @@ class ProcessTab(QWidget):
         self.channels_layout = QGridLayout()
         channels_widget.setLayout(self.channels_layout)
 
+        show_data_screen_widget = QCheckBox("Show processed images (might slow down processing)")
+        show_data_screen_widget.setChecked(True)
+        show_data_screen_widget.stateChanged.connect(self.data_screen_toggled)
+        
+        screen_layout = QVBoxLayout()
+        screen_layout_widget = QWidget()
+        screen_layout.addWidget(self.screen_label)
+        screen_layout.addWidget(show_data_screen_widget)
+        screen_layout_widget.setLayout(screen_layout)
+
+
         channels_screen_splitter = QSplitter(Qt.Horizontal)
-        channels_screen_splitter.addWidget(self.screen_label)
+        channels_screen_splitter.addWidget(screen_layout_widget)
         channels_screen_splitter.addWidget(channels_widget)
         channels_screen_splitter.setSizes([400,200])
         channels_screen_splitter.setCollapsible(1, False)
@@ -73,6 +85,9 @@ class ProcessTab(QWidget):
         if self.available_data_folders:
             self.select_data_folder(0)
         return data_folder_selection
+
+    def data_screen_toggled(self):
+        self.show_data_screen = not self.show_data_screen
 
     def select_data_folder(self, idx):
         self.data_folder = self.available_data_folders[idx]
@@ -136,14 +151,15 @@ class ProcessTab(QWidget):
             self.process()
 
     def update_image(self, img):
-        height, width, channel = img.shape
-        bytes_per_line = 3 * width
-        q_img = QImage(img.data, width, height, bytes_per_line, QImage.Format_RGB888)
-        q_pixmap = QPixmap.fromImage(q_img).scaled(self.screen_label.width(), 
-                                                   self.screen_label.height(), 
-                                                   Qt.KeepAspectRatio)
-        self.screen_label.setPixmap(q_pixmap)
-        self.screen_label.show()
+        if self.show_data_screen:
+            height, width, channel = img.shape
+            bytes_per_line = 3 * width
+            q_img = QImage(img.data, width, height, bytes_per_line, QImage.Format_RGB888)
+            q_pixmap = QPixmap.fromImage(q_img).scaled(self.screen_label.width(), 
+                                                       self.screen_label.height(), 
+                                                       Qt.KeepAspectRatio)
+            self.screen_label.setPixmap(q_pixmap)
+            self.screen_label.show()
         QApplication.processEvents()
 
     def process(self):

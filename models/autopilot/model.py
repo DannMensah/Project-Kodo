@@ -127,7 +127,8 @@ class Model(KodoModel):
                 if self.img_is_dropped(output):
                     continue
                 img  = np.load(images_dir / "image_{}.npy".format(frame_idx))
-                img_update_callback(img)
+                if img_update_callback:
+                    img_update_callback(img)
                 img = img_resize_to_int(img, self.img_h, self.img_w, scaled=True)
                 images.append(img)
                 outputs.append(output)

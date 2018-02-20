@@ -24,7 +24,7 @@ class RecordTab(QWidget):
 
     def __init__(self):
         super().__init__()
-
+        self.refresh_image = True
         self.recording = False
         self.predicting = False
         self.frame = 1
@@ -248,10 +248,12 @@ class RecordTab(QWidget):
         
     
     def stop_recording(self):
+        self.refresh_image = True
         self.recording = False
         self.predict_button.setEnabled(True)
 
     def start_recording(self):
+        self.refresh_image = False
         self.predict_button.setEnabled(False)
         self.frame = 1
         try_make_dirs(self.save_dir / "images")
@@ -299,12 +301,13 @@ class RecordTab(QWidget):
                                                    mode="reflect")
         array_img = 255 * array_img
         array_img = array_img.astype(np.uint8)
-        height, width, channel = array_img.shape
-        bytes_per_line = 3 * width
-        q_img = QImage(array_img.data, width, height, bytes_per_line, QImage.Format_RGB888)
-        q_pixmap = QPixmap.fromImage(q_img).scaled(self.record_screen_label.width(), 
-                                                   self.record_screen_label.height(), 
-                                                   Qt.KeepAspectRatio)
-        self.record_screen_label.setPixmap(q_pixmap)
-        self.record_screen_label.show()
+        if self.refresh_image:
+            height, width, channel = array_img.shape
+            bytes_per_line = 3 * width
+            q_img = QImage(array_img.data, width, height, bytes_per_line, QImage.Format_RGB888)
+            q_pixmap = QPixmap.fromImage(q_img).scaled(self.record_screen_label.width(), 
+                                                       self.record_screen_label.height(), 
+                                                       Qt.KeepAspectRatio)
+            self.record_screen_label.setPixmap(q_pixmap)
+            self.record_screen_label.show()
         return array_img
