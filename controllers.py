@@ -20,7 +20,7 @@ class PyvJoyXboxController:
 
     def emit_keys(self, output_values):
         for idx, value in enumerate(output_values):
-            key_label = PYGAME_TO_XBOX[self.data_key_labels[idx]]
+            key_label = self.data_key_labels[idx]
             if key_label in XBOX_TO_PYVJOY["AXES"].keys():
                 scaled = self.scale_axis(value)
                 self.controller.set_axis(XBOX_TO_PYVJOY["AXES"][key_label], scaled)
