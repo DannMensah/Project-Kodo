@@ -9,6 +9,7 @@ The model was trained on about an hour of training data, which was collected by 
 
 As can be seen, the model does make some mistakes. It seems to be able to recover surprisingly well, given that the training data doesn't include a lot of "mistakes".
  
+ #### Video:
 [![Video of autonomous driving](https://img.youtube.com/vi/hISzqO2uPwo/0.jpg)](https://www.youtube.com/watch?v=hISzqO2uPwo)
 
 
