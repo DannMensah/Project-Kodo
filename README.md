@@ -83,9 +83,9 @@ The model API is still under work. Currently each model needs to subclass `model
 - Make GUI nicer
 - Enable training on multiple datasets
 
-## Sources of inspiration
-[Tensorkart](https://github.com/kevinhughes27/TensorKart)
-[pygta5](https://github.com/Sentdex/pygta5)
+## Sources of inspiration and help
+- [Tensorkart](https://github.com/kevinhughes27/TensorKart)
+- [pygta5](https://github.com/Sentdex/pygta5)
 
 
 
