@@ -8,7 +8,7 @@ The model was trained on about an hour of training data, which was collected by 
 
 As can be seen, the model does make some mistakes. It seems to be able to recover surprisingly well, given that the training data doesn't include a lot of "mistakes".
  
-![Kodo.gif](https://media.giphy.com/media/TIxe9ZMJXbVyil0bAZ/giphy.gif)
+![Kodo.gif](https://media.giphy.com/media/TIxe9ZMJXbVyil0bAZ/source.mp4)
 
 ## Usage
 In its current state, the GUI is meant to simply aid the training process by providing a quick interface. It's not pretty, and it WILL break if invalid data is provided. That being said, I've tried to remove obvious sources of user error, and a user with some knowledge of the underlying process should be able to use the program without any problems.
