@@ -48,6 +48,7 @@ In the training tab, the user can set basic hyperparameters for training the mod
 
 ##### Predicting
 **!!Prediction currently only works on Windows!!**
+
 Prediction can be done in the same tab as recording. To start predicting, run x360ce and set the vJoy controller. To predict, select the model and the associated set of weights to be used. The platform will then capture the image from the defined area and use the model to predict the outputs. Finally it uses PyvJoy and x360ce to emit the controls to the game.
 
 ## Adding models
