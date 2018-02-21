@@ -6,3 +6,4 @@ mss
 keras
 tensorflow
 h5py
+scikit-learn

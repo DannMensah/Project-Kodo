@@ -13,6 +13,7 @@ from keras.layers import Dense, Flatten, Conv2D, Dropout
 from keras.layers.normalization import BatchNormalization
 from keras import optimizers
 from keras import backend as K
+from sklearn.utils import shuffle
 
 from utilities import (stack_npy_files_in_dir, try_make_dirs,  
                        img_resize_to_int, launch_tensorboard)
@@ -28,7 +29,7 @@ class Model(KodoModel):
         self.data_name = None
         self.model_path = Path(os.path.dirname(os.path.abspath(__file__)))
 
-    def process(self, data_folder, input_channels_mask, img_update_callback=None):    
+    def process(self, data_folder, input_channels_mask=None, img_update_callback=None):    
         with open(data_folder / "info.json") as info_file:
             data_info = json.load(info_file)
         key_labels = np.asarray(data_info["key_labels"])[input_channels_mask]
@@ -39,7 +40,8 @@ class Model(KodoModel):
         self.X, self.y = self.stack_arrays(data_folder / "key-events", 
                                            data_folder / "images", 
                                            img_update_callback)
-        self.y = self.y[:, input_channels_mask]
+        if input_channels_mask:
+            self.y = self.y[:, input_channels_mask]
 
         save_path = self.model_path / "data" / data_folder.name
         try_make_dirs(save_path)
@@ -98,6 +100,7 @@ class Model(KodoModel):
         self.model = model
 
     def train(self, batch_size=50, epochs=100, weights_name="default_weights"):
+        self.X, self.y = shuffle(self.X, self.y, random_state=0)        
         weights_path = self.model_path / "weights" / weights_name
         try_make_dirs(weights_path)
         logs_path = weights_path / "logs"
