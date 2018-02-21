@@ -5,7 +5,7 @@ The goal of Project Kodo was originally to be an autonomous driving agent for GT
 ## Examples
 I've used the platform to train an autonomous driving agent for GTA V. Below are some results using an implementation of [NVIDIA's autopilot model](https://arxiv.org/pdf/1604.07316.pdf). The agent drives solely based on image data without any other inputs from the game.
 
-The model was trained on about an hour of training data, which was collected by driving around the game world. During pre-processing, frames with little turning are dropped, as per the original paper. To do this, a logistic function is used to weigh the magnitude of the left stick's X-axis in each frame, and frames where the magnitude is larger, are more likely to not get dropped out. This turned out to be VERY important. The model seen in the video below was trained using a batch size of 32 for 300 epochs. The a training dataset consisted of about 2500 frames, picked from a total of 30000 images. Though getting the model right took quite a while, training took only 15 minutes on a NVIDIA P5000.
+The model was trained on about an hour of training data, which was collected by driving around the game world. During pre-processing, frames with little turning are dropped, as per the original paper. To do this, a logistic function is used to weigh the magnitude of the left stick's X-axis in each frame, and frames where the magnitude is larger, are more likely to not get dropped out. This turned out to be VERY important. The model seen in the video below was trained using a batch size of 32 for 300 epochs. The a training dataset consisted of about 2500 frames, picked from a total of 30000 images. Though getting the model right took quite a while, training took only 15 minutes on an NVIDIA P5000.
 
 As can be seen, the agent does make some mistakes. Still, it seems to be able to recover surprisingly well, considering that the training data consists of fairly "clean" driving. Future work includes adding traffic and pedestrians to the mix, and recording more training data to get a more accurate model.
  
@@ -59,7 +59,7 @@ In the training tab, the user can set basic hyperparameters for training the mod
 
 
 ### Predicting
-**!!Prediction currently only works on Windows!!**
+**Prediction currently only works on Windows!** This is due to the limitations of setting up virtual controllers on other systems. Linux support seems to be a viable feature addition in the future, but unfortunately MacOS isn't happening any time soon.
 
 Prediction can be done in the same tab as recording. To start predicting run x360ce, select the model and the associated set of weights to be used. The platform will then capture the image from the defined area and use the model to predict the outputs. Finally it uses PyvJoy and x360ce to emit the controls to the game.
 
