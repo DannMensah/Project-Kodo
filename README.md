@@ -9,13 +9,8 @@ The model was trained on about an hour of training data, which was collected by 
 
 As can be seen, the agent does make some mistakes. Still, it seems to be able to recover surprisingly well, considering that the training data consists of fairly "clean" driving. Future work includes adding traffic and pedestrians to the mix, and recording more training data to get a more accurate model.
  
-<<<<<<< Updated upstream
  #### Video:
 [![Video of autonomous driving](https://img.youtube.com/vi/hISzqO2uPwo/0.jpg)](https://www.youtube.com/watch?v=hISzqO2uPwo)
-
-=======
-![Kodo.gif](screenshots/kodo.gif)
->>>>>>> Stashed changes
 
 ## Usage
 In its current state, the GUI is meant to simply aid the training process by providing a quick interface. It's quite ugly and it WILL break if invalid data is provided. That being said, I've tried to remove obvious sources of user error, and a user with some knowledge of the underlying process should be able to use the program without any problems.
