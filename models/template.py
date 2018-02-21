@@ -16,11 +16,6 @@ class KodoModel:
     def create_model(self):
         raise NotImplementedError
 
-    def load_data(self, data_folder):
-        self.y = np.load(data_folder / "y.npy")
-        self.X = np.load(data_folder / "X.npy")
-        self.load_info(data_folder / "info.json")
-
     def load_info(self, info_path):
         with open(info_path) as info_file:
             self.info = json.load(info_file)
@@ -30,4 +25,3 @@ class KodoModel:
 
     def get_actions(self):
         raise NotImplementedError
-

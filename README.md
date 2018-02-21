@@ -9,12 +9,16 @@ The model was trained on about an hour of training data, which was collected by 
 
 As can be seen, the agent does make some mistakes. Still, it seems to be able to recover surprisingly well, considering that the training data consists of fairly "clean" driving. Future work includes adding traffic and pedestrians to the mix, and recording more training data to get a more accurate model.
  
+<<<<<<< Updated upstream
  #### Video:
 [![Video of autonomous driving](https://img.youtube.com/vi/hISzqO2uPwo/0.jpg)](https://www.youtube.com/watch?v=hISzqO2uPwo)
 
+=======
+![Kodo.gif](screenshots/kodo.gif)
+>>>>>>> Stashed changes
 
 ## Usage
-In its current state, the GUI is meant to simply aid the training process by providing a quick interface. It's not pretty, and it WILL break if invalid data is provided. That being said, I've tried to remove obvious sources of user error, and a user with some knowledge of the underlying process should be able to use the program without any problems.
+In its current state, the GUI is meant to simply aid the training process by providing a quick interface. It's quite ugly and it WILL break if invalid data is provided. That being said, I've tried to remove obvious sources of user error, and a user with some knowledge of the underlying process should be able to use the program without any problems.
 
 
 ### Installation
@@ -54,7 +58,7 @@ The processing tab provides an easy way to generate training data for a specific
 
 ### Training
 ![training](/screenshots/training.png?raw=true)
-In the training tab, the user can set basic hyperparameters for training the model, as well as a name for the weights. Starting the training opens a Tensorboard console that can be used for following the training process. **NOTE:** In the beginning the page will probably not work. Make sure to refresh the page after the first training epoch has completed to see the actual console.
+In the training tab, the user can set basic hyperparameters for training the model, as well as a name for the weights. Multiple processed datasets can be chosen to be trained on. Starting the training opens a Tensorboard console that can be used for following the training process. **NOTE:** In the beginning the page will probably not work. Make sure to refresh the page after the first training epoch has completed to see the actual console.
 
 
 
@@ -84,8 +88,8 @@ If those requirements are met, the model is ready to be trained and used with th
 - Add ETA or some other indication of how much of the processing is done
 - Make model API clearer
 - Make GUI nicer
-- Enable training on multiple datasets
 - Make code prettier, and add comments and documentation to make contributing easier
+- Show info about selected dataset on training screen
 
 ## Sources of inspiration and help
 - [Tensorkart](https://github.com/kevinhughes27/TensorKart)
