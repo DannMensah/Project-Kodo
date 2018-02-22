@@ -114,7 +114,7 @@ class TrainTab(QWidget):
         spec = importlib.util.spec_from_file_location("model", module_path)
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
-        self.model = module.Model()
+        self.model = module.KodoModel()
         self.weights_name_field.setEnabled(True)
         self.refresh_data_list()
 
@@ -177,20 +177,26 @@ class TrainTab(QWidget):
         return names
 
     def stack_data(self):
-        X_list = []
-        y_list = []
         info = None
-
+        data_lists = []
         for name in self.get_added_data_names():
             data_path = self.model_dir / "data" / name
-            X_list.append(np.load(data_path / "X.npy"))
-            y_list.append(np.load(data_path / "y.npy"))
+            if not data_lists:
+                for idx, data in enumerate(self.model.load_processed_data(data_path)):
+                    data_lists.append([data])
+            else:
+                for idx, data in enumerate(self.model.load_processed_data(data_path)):
+                    data_lists[idx].append(data)
         with open(data_path / "info.json") as fp:
             info = json.load(fp)
-        return (np.concatenate(X_list, axis=0), np.concatenate(y_list, axis=0), info)
+        stacks = []
+        for data_list in data_lists:
+            stacks.append(np.concatenate(data_list, axis=0))
+        stacks.append(info)
+        return stacks
 
     def train(self):
-        self.model.X, self.model.y, self.model.info = self.stack_data()
+        self.model.load_data_into_variables(self.stack_data())
         self.model.create_model()
         self.model.train(batch_size=self.batch_size, epochs=self.epochs, weights_name=self.weights_name)
         self.train_button.setChecked(False)

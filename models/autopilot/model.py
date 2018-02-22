@@ -16,12 +16,13 @@ from keras import backend as K
 from sklearn.utils import shuffle
 
 from utilities import (stack_npy_files_in_dir, try_make_dirs,  
-                       img_resize_to_int, launch_tensorboard)
-from models.template import KodoModel
+                       img_resize_to_int, launch_tensorboard,
+                       sorted_alphanumeric)
+from models.template import KodoTemplate 
 
-class Model(KodoModel):
+class KodoModel(KodoTemplate):
     def __init__(self):
-        super(Model, self).__init__()
+        super(KodoModel, self).__init__()
 
         self.img_h = 66
         self.img_w = 200
@@ -123,13 +124,14 @@ class Model(KodoModel):
     def stack_arrays(self, key_events_dir, images_dir, img_update_callback=None):
         images = []
         outputs = []
-        for filename in os.listdir(key_events_dir):
+        sorted_filenames = sorted_alphanumeric(os.listdir(key_events_dir))
+        for filename in sorted_filenames:
             if filename.endswith(".npy"):
                 frame_idx = filename.split("_")[1].split(".")[0]
                 output = np.load(key_events_dir / "key-event_{}.npy".format(frame_idx))
                 if self.img_is_dropped(output):
                     continue
-                img  = np.load(images_dir / "image_{}.npy".format(frame_idx))
+                img = np.load(images_dir / "image_{}.npy".format(frame_idx))
                 if img_update_callback:
                     img_update_callback(img)
                 img = img_resize_to_int(img, self.img_h, self.img_w, scaled=True)
@@ -151,4 +153,14 @@ class Model(KodoModel):
         elif rand < braking_magnitude:
             return False
         return True
+    
+    # Loads all necessary data from the given folder. X's, y's, not info"
+    def load_processed_data(self, data_path):
+        X = np.load(data_path / "X.npy")
+        y = np.load(data_path / "y.npy")
+        return (X_img, y)
+
+    def load_data_into_variables(data):
+        self.X, self.y, self.info = data
+        
 
