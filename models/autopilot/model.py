@@ -16,7 +16,8 @@ from keras import backend as K
 from sklearn.utils import shuffle
 
 from utilities import (stack_npy_files_in_dir, try_make_dirs,  
-                       img_resize_to_int, launch_tensorboard)
+                       img_resize_to_int, launch_tensorboard,
+                       sorted_alphanumeric)
 from models.template import KodoModel
 
 class Model(KodoModel):
@@ -123,13 +124,14 @@ class Model(KodoModel):
     def stack_arrays(self, key_events_dir, images_dir, img_update_callback=None):
         images = []
         outputs = []
-        for filename in os.listdir(key_events_dir):
+        sorted_filenames = sorted_alphanumeric(os.listdir(key_events_dir))
+        for filename in sorted_filenames:
             if filename.endswith(".npy"):
                 frame_idx = filename.split("_")[1].split(".")[0]
                 output = np.load(key_events_dir / "key-event_{}.npy".format(frame_idx))
                 if self.img_is_dropped(output):
                     continue
-                img  = np.load(images_dir / "image_{}.npy".format(frame_idx))
+                img = np.load(images_dir / "image_{}.npy".format(frame_idx))
                 if img_update_callback:
                     img_update_callback(img)
                 img = img_resize_to_int(img, self.img_h, self.img_w, scaled=True)

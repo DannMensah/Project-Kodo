@@ -3,6 +3,7 @@ from pathlib import Path
 import webbrowser
 import threading
 import socket
+import re
 
 import numpy as np
 from skimage.transform import resize
@@ -43,3 +44,7 @@ def launch_tensorboard(log_dir):
 def run_tensorboard_server(log_dir):
     os.system("tensorboard --logdir=" + log_dir + " --port 6006")
 
+def sorted_alphanumeric(data):
+    convert = lambda text: int(text) if text.isdigit() else text.lower()
+    alphanum_key = lambda key: [ convert(c) for c in re.split('([0-9]+)', key) ] 
+    return sorted(data, key=alphanum_key)
