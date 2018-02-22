@@ -145,13 +145,10 @@ class Model(KodoModel):
     def img_is_dropped(self, actions):
         rand = random.random()
         transformed_magnitude = self.dropping_function(abs(actions[0]) - 0.4)
-        braking_magnitude = self.dropping_function((actions[1] + 1)/2 - 0.65)
-        acceleration_magnitude = self.dropping_function((actions[2] + 1)/2 - 0.65)
+        braking_magnitude = self.dropping_function((actions[1] + 1)/2 - 0.9)
         if rand < transformed_magnitude:
             return False
         elif rand < braking_magnitude:
-            return False
-        elif rand < acceleration_magnitude:
             return False
         return True
 
