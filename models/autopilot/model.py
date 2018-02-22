@@ -139,15 +139,19 @@ class Model(KodoModel):
         y = np.stack(outputs, axis=0)
         return X, y
 
-    def turning_dropping_function(self, x):
-        return (1 / ( 1 + math.exp(-15*(x - 0.4))))     
+    def dropping_function(self, x):
+        return (1 / ( 1 + math.exp(-15*(x))))     
 
     def img_is_dropped(self, actions):
-        transformed_magnitude = self.turning_dropping_function(abs(actions[0]))
-        braking_magnitude = self.turning_dropping_function((actions[2] + 1)/2 - 0.3)
-        if random.random() < transformed_magnitude:
+        rand = random.random()
+        transformed_magnitude = self.dropping_function(abs(actions[0]) - 0.4)
+        braking_magnitude = self.dropping_function((actions[1] + 1)/2 - 0.65)
+        acceleration_magnitude = self.dropping_function((actions[2] + 1)/2 - 0.65)
+        if rand < transformed_magnitude:
             return False
-        elif random.random() < braking_magnitude:
+        elif rand < braking_magnitude:
+            return False
+        elif rand < acceleration_magnitude:
             return False
         return True
 
