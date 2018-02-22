@@ -18,11 +18,11 @@ from sklearn.utils import shuffle
 from utilities import (stack_npy_files_in_dir, try_make_dirs,  
                        img_resize_to_int, launch_tensorboard,
                        sorted_alphanumeric)
-from models.template import KodoModel
+from models.template import KodoTemplate 
 
-class Model(KodoModel):
+class KodoModel(KodoTemplate):
     def __init__(self):
-        super(Model, self).__init__()
+        super(KodoModel, self).__init__()
 
         self.img_h = 66
         self.img_w = 200
@@ -156,4 +156,14 @@ class Model(KodoModel):
         elif rand < acceleration_magnitude:
             return False
         return True
+    
+    # Loads all necessary data from the given folder. X's, y's, not info"
+    def load_processed_data(self, data_path):
+        X = np.load(data_path / "X.npy")
+        y = np.load(data_path / "y.npy")
+        return (X_img, y)
+
+    def load_data_into_variables(data):
+        self.X, self.y, self.info = data
+        
 

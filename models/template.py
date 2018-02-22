@@ -3,7 +3,7 @@ import json
 
 import numpy as np 
 
-class KodoModel:
+class KodoTemplate:
     
     def __init__(self):
         self.X = None

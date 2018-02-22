@@ -179,7 +179,7 @@ class RecordTab(QWidget):
         spec = importlib.util.spec_from_file_location("model", module_path)
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
-        self.model = module.Model()
+        self.model = module.KodoModel()
         self.refresh_weights_selection()
 
     def refresh_weights_selection(self):
