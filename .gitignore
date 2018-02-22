@@ -9,3 +9,7 @@ models/autopilot/weights/*
 !models/autopilot/weights/.gitkeep
 !data/.gitkeep
 !models/autopilot/data/.gitkeep
+models/branched_autopilot/data/*
+models/branched_autopilot/weights/*
+!models/branched_autopilot/weights/.gitkeep
+!models/branched_autopilot/data/.gitkeep
