@@ -27,3 +27,7 @@ class PyvJoyXboxController:
             elif key_label in XBOX_TO_PYVJOY["BUTTONS"].keys():
                 thresholded = self.threshold_button(value)
                 self.controller.set_button(XBOX_TO_PYVJOY["BUTTONS"][key_label], thresholded)
+
+    def reset_controller(self):
+        self.controller.reset_povs()
+        self.controller.reset_buttons()
