@@ -128,7 +128,7 @@ class KodoModel(KodoTemplate):
         
     def get_actions(self, img):
         img = img_resize_to_int(img, self.img_h, self.img_w, scaled=True)
-        if not self.prev_prediction:
+        if type(self.prev_prediction) is not np.ndarray:
             prediction = np.zeros((len(self.info["key_labels"]),))  
         else:
             prediction = self.model.predict([np.expand_dims(img, axis=0), 
