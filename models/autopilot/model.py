@@ -158,9 +158,9 @@ class KodoModel(KodoTemplate):
     def load_processed_data(self, data_path):
         X = np.load(data_path / "X.npy")
         y = np.load(data_path / "y.npy")
-        return (X_img, y)
+        return (X, y)
 
-    def load_data_into_variables(data):
+    def load_data_into_variables(self, data):
         self.X, self.y, self.info = data
         
 

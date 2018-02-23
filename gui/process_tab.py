@@ -19,7 +19,7 @@ class ProcessTab(QWidget):
         self.available_models = []
         self.model = None
         self.input_channels_mask = []
-        self.input_info = None
+        self.info = None
         self.show_data_screen = True
 
         self.initUI()
@@ -91,14 +91,16 @@ class ProcessTab(QWidget):
 
     def select_data_folder(self, idx):
         self.data_folder = self.available_data_folders[idx]
-        self.load_info()
-        self.refresh_key_mask()
+        self.info, key_labels_unchanged = self.load_info()
+        self.refresh_key_mask(key_labels_unchanged)
         if self.model:
             self.process_button.setEnabled(True)
 
     def load_info(self):
         with open(self.data_folder / "info.json") as info_file:
-            self.info = json.load(info_file)
+            new_info = json.load(info_file)
+        key_labels_unchanged = self.info and new_info["key_labels"] == self.info["key_labels"]
+        return new_info, key_labels_unchanged
 
     def clear_layout(self, layout):
         while layout.count():
@@ -108,13 +110,15 @@ class ProcessTab(QWidget):
             elif child.layout() is not None:
                 clearLayout(child.layout())
 
-    def refresh_key_mask(self):
+    def refresh_key_mask(self, key_labels_unchanged):
+        if key_labels_unchanged:
+            return
         key_labels = self.info["key_labels"]
-        self.input_channels_mask = [True] * len(key_labels)
+        self.input_channels_mask = [False] * len(key_labels)
         self.clear_layout(self.channels_layout)
         for idx, label in enumerate(key_labels):
             checkbox_widget = QCheckBox(label)
-            checkbox_widget.setChecked(True)
+            checkbox_widget.setChecked(False)
             checkbox_widget.stateChanged.connect(lambda checked, idx=idx: self.checkbox_checked(checked, idx))
             self.channels_layout.addWidget(checkbox_widget)
 
