@@ -147,13 +147,10 @@ class KodoModel(KodoTemplate):
     def img_is_dropped(self, actions):
         rand = random.random()
         transformed_magnitude = self.dropping_function(abs(actions[0]) - 0.4)
-        braking_magnitude = self.dropping_function((actions[1] + 1)/2 - 0.65)
-        acceleration_magnitude = self.dropping_function((actions[2] + 1)/2 - 0.65)
+        braking_magnitude = self.dropping_function((actions[1] + 1)/2 - 0.9)
         if rand < transformed_magnitude:
             return False
         elif rand < braking_magnitude:
-            return False
-        elif rand < acceleration_magnitude:
             return False
         return True
     
@@ -161,9 +158,9 @@ class KodoModel(KodoTemplate):
     def load_processed_data(self, data_path):
         X = np.load(data_path / "X.npy")
         y = np.load(data_path / "y.npy")
-        return (X_img, y)
+        return (X, y)
 
-    def load_data_into_variables(data):
+    def load_data_into_variables(self, data):
         self.X, self.y, self.info = data
         
 
