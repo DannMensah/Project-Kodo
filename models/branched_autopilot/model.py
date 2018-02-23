@@ -32,7 +32,7 @@ class KodoModel(KodoTemplate):
         self.img_d = 3
         self.data_name = None
         self.model_path = Path(os.path.dirname(os.path.abspath(__file__)))
-        self.prev_prediction = None
+        self.prev_control = None
 
     def process(self, data_folder, input_channels_mask=None, img_update_callback=None):    
         with open(data_folder / "info.json") as info_file:
@@ -57,55 +57,65 @@ class KodoModel(KodoTemplate):
         with open(save_path / "info.json", "w") as info_file:
             json.dump(self.info, info_file)
 
-    def loss(self, y, y_pred):
-        return K.sqrt(K.sum(K.square(y_pred-y), axis=-1))
-
     def create_model(self, dropout_probability=0.5):
         
         input_images = Input(shape=(self.img_h, self.img_w, self.img_d), name="input_images")
 
-        x = Conv2D(24, kernel_size=(5, 5), strides=(2, 2), activation="relu")(input_images)
-        x = BatchNormalization()(x)
-        x = Dropout(dropout_probability)(x)
+        image_branch = Conv2D(24, kernel_size=(5, 5), strides=(2, 2), activation="relu")(input_images)
+        image_branch = BatchNormalization()(image_branch)
+        image_branch = Dropout(dropout_probability)(image_branch)
 
-        x = Conv2D(36, kernel_size=(5, 5), strides=(2, 2), activation="relu")(x)
-        x = BatchNormalization()(x)
-        x = Dropout(dropout_probability)(x)
+        image_branch = Conv2D(36, kernel_size=(5, 5), strides=(2, 2), activation="relu")(image_branch)
+        image_branch = BatchNormalization()(image_branch)
+        image_branch = Dropout(dropout_probability)(image_branch)
 
-        x = Conv2D(48, kernel_size=(5, 5), strides=(2, 2), activation="relu")(x)
-        x = BatchNormalization()(x)
-        x = Dropout(dropout_probability)(x)
+        image_branch = Conv2D(48, kernel_size=(5, 5), strides=(2, 2), activation="relu")(image_branch)
+        image_branch = BatchNormalization()(image_branch)
+        image_branch = Dropout(dropout_probability)(image_branch)
 
-        x = Conv2D(64, kernel_size=(3, 3), activation="relu")(x)
-        x = BatchNormalization()(x)
-        x = Dropout(dropout_probability)(x)
+        image_branch = Conv2D(64, kernel_size=(3, 3), activation="relu")(image_branch)
+        image_branch = BatchNormalization()(image_branch)
+        image_branch = Dropout(dropout_probability)(image_branch)
 
-        x = Conv2D(64, kernel_size=(3, 3), activation="relu")(x)
-        x = BatchNormalization()(x)
-        x = Dropout(dropout_probability)(x)
+        image_branch = Conv2D(64, kernel_size=(3, 3), activation="relu")(image_branch)
+        image_branch = BatchNormalization()(image_branch)
+        image_branch = Dropout(dropout_probability)(image_branch)
 
-        x = Flatten()(x)
+        image_branch = Flatten()(image_branch)
 
-        x = Dense(1164, activation="relu")(x)
-        x = BatchNormalization()(x)
-        x = Dropout(dropout_probability)(x)
+        image_branch = Dense(1164, activation="relu")(image_branch)
+        image_branch = BatchNormalization()(image_branch)
+        image_branch = Dropout(dropout_probability)(image_branch)
 
-        x = Dense(100, activation="relu")(x)
-        x = BatchNormalization()(x)
-        x = Dropout(dropout_probability)(x)
+        image_branch = Dense(100, activation="relu")(image_branch)
+        image_branch = BatchNormalization()(image_branch)
+        image_branch = Dropout(dropout_probability)(image_branch)
 
-        x = Dense(50, activation="relu")(x)
-        x = BatchNormalization()(x)
-        x = Dropout(dropout_probability)(x)
+
 
         input_controls = Input(shape=(len(self.info["key_labels"]),), name="input_controls")
-        x = keras.layers.concatenate([x, input_controls])
-        
-        x = Dense(10, activation="relu")(x)
-        x = BatchNormalization()(x)
-        x = Dropout(dropout_probability)(x)
 
-        main_output = Dense(len(self.info["key_labels"]), activation="softsign", name="main_output")(x)
+        control_branch = Dense(50, activation="relu")(input_controls)
+        control_branch = BatchNormalization()(control_branch)
+        control_branch = Dropout(dropout_probability)(control_branch)
+
+        control_branch = Dense(100, activation="relu")(control_branch)
+        control_branch = BatchNormalization()(control_branch)
+        control_branch = Dropout(dropout_probability)(control_branch)
+
+
+
+        main_branch = keras.layers.concatenate([image_branch, control_branch])
+
+        main_branch = Dense(50, activation="relu")(main_branch)
+        main_branch = BatchNormalization()(main_branch)
+        main_branch = Dropout(dropout_probability)(main_branch)
+
+        main_branch = Dense(10, activation="relu")(main_branch)
+        main_branch = BatchNormalization()(main_branch)
+        main_branch = Dropout(dropout_probability)(main_branch)
+
+        main_output = Dense(len(self.info["key_labels"]), activation="linear", name="main_output")(main_branch)
         
         self.model = Model(inputs=[input_images, input_controls], outputs=main_output)
 
@@ -118,49 +128,52 @@ class KodoModel(KodoTemplate):
         logs_path_str = str(logs_path.absolute())
         tb_callback = keras.callbacks.TensorBoard(log_dir=logs_path_str, histogram_freq=0,  
           write_graph=True, write_images=True)
-        self.model.compile(loss=self.loss, optimizer=optimizers.adam())
+        self.model.compile(loss='mean_squared_error', optimizer=optimizers.adam())
         launch_tensorboard(logs_path_str) 
-        self.model.fit([self.X_img, self.X_control], self.y, batch_size=batch_size, epochs=epochs, shuffle=False, validation_split=0.2,
-                       callbacks=[tb_callback])
+        self.model.fit([self.X_img, self.X_control], self.y, batch_size=batch_size, 
+                        epochs=epochs, shuffle=False, validation_split=0.2,
+                        callbacks=[tb_callback])
         self.model.save_weights(weights_path / "weights.h5")
         with open(weights_path / "info.json", "w") as info_file:
             json.dump(self.info, info_file)
         
     def get_actions(self, img):
         img = img_resize_to_int(img, self.img_h, self.img_w, scaled=True)
-        if not self.prev_prediction:
-            prediction = np.zeros((len(self.info["key_labels"]),))  
+        if not self.prev_control:
+            prediction = np.zeros((len(self.info["key_labels"]),))
         else:
             prediction = self.model.predict([np.expand_dims(img, axis=0), 
-                                             np.expand_dims(self.prev_prediction, axis=0)], 
+                                             np.expand_dims(self.prev_control, axis=0)], 
                                              batch_size=1)[0]
-        self.prev_prediction = prediction
-        return prediction
+        next_control = self.prev_control + prediction
+        self.prev_control = next_control
+        return next_control
+
     def stack_arrays(self, key_events_dir, images_dir, img_update_callback=None):
         images = []
         controls = []
-        outputs = []
+        control_diffs = []
         sorted_filenames = sorted_alphanumeric(os.listdir(key_events_dir))
         prev_control = None
         for filename in sorted_filenames:
             if filename.endswith(".npy"):
                 frame_idx = filename.split("_")[1].split(".")[0]
-                output = np.load(key_events_dir / "key-event_{}.npy".format(frame_idx))
+                control = np.load(key_events_dir / "key-event_{}.npy".format(frame_idx))
                 # First image of the dataset, skip to get initial control
-                if type(prev_control) is not np.ndarray or self.img_is_dropped(output):
-                    prev_control = output
+                if type(prev_control) is not np.ndarray or self.img_is_dropped(control):
+                    prev_control = control
                     continue
                 img = np.load(images_dir / "image_{}.npy".format(frame_idx))
                 if img_update_callback:
                     img_update_callback(img)
                 img = img_resize_to_int(img, self.img_h, self.img_w, scaled=True)
                 images.append(img)
-                outputs.append(output)
+                control_diffs.append(control - prev_control)
                 controls.append(prev_control)
-                prev_control = output        
+                prev_control = control        
         X_img = np.stack(images, axis=0)
         X_control = np.stack(controls, axis=0)
-        y = np.stack(outputs, axis=0)
+        y = np.stack(control_diffs, axis=0)
         return X_img, X_control, y
 
     def dropping_function(self, x):
