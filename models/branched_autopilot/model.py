@@ -93,7 +93,7 @@ class KodoModel(KodoTemplate):
 
 
 
-        input_controls = Input(shape=(len(self.info["key_labels"]),), name="input_controls")
+        input_controls = Input(shape=(len(self.info["key_labels"])*2,), name="input_controls")
 
         control_branch = Dense(50, activation="relu")(input_controls)
         control_branch = BatchNormalization()(control_branch)
@@ -146,7 +146,7 @@ class KodoModel(KodoTemplate):
             prediction = self.model.predict([np.expand_dims(img, axis=0), 
                                              np.expand_dims(self.prev_control, axis=0)], 
                                              batch_size=1)[0]
-        next_control = self.prev_control + prediction
+        next_control = np.clip(self.prev_control + prediction, 0, 1)
         self.prev_control = next_control
         return next_control
 
@@ -156,6 +156,7 @@ class KodoModel(KodoTemplate):
         control_diffs = []
         sorted_filenames = sorted_alphanumeric(os.listdir(key_events_dir))
         prev_control = None
+        prev_diff = None
         for filename in sorted_filenames:
             if filename.endswith(".npy"):
                 frame_idx = filename.split("_")[1].split(".")[0]
