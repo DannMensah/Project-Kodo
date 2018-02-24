@@ -29,5 +29,10 @@ class PyvJoyXboxController:
                 self.controller.set_button(XBOX_TO_PYVJOY["BUTTONS"][key_label], thresholded)
 
     def reset_controller(self):
-        self.controller.reset_povs()
-        self.controller.reset_buttons()
+        a = XBOX_TO_PYVJOY["AXES"]
+        self.controller.set_axis(a["RS_X"], 16384)
+        self.controller.set_axis(a["RS_Y"], 16384)
+        self.controller.set_axis(a["LS_X"], 16384)
+        self.controller.set_axis(a["LS_Y"], 16384)
+        self.controller.set_axis(a["LT"], 0)
+        self.controller.set_axis(a["RT"], 0)
