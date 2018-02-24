@@ -30,6 +30,7 @@ class KodoModel(KodoTemplate):
         self.img_h = 66
         self.img_w = 200
         self.img_d = 3
+        self.n_stacked_images = 2
         self.data_name = None
         self.model_path = Path(os.path.dirname(os.path.abspath(__file__)))
         self.prev_control = None
@@ -57,9 +58,12 @@ class KodoModel(KodoTemplate):
         with open(save_path / "info.json", "w") as info_file:
             json.dump(self.info, info_file)
 
+    def loss(self, y, y_pred):
+        return K.sqrt(K.sum(K.square(y_pred-y), axis=-1))
+
     def create_model(self, dropout_probability=0.5):
         
-        input_images = Input(shape=(self.img_h, self.img_w, self.img_d), name="input_images")
+        input_images = Input(shape=(self.img_h, self.img_w, self.img_d*self.n_stacked_images), name="input_images")
 
         image_branch = Conv2D(24, kernel_size=(5, 5), strides=(2, 2), activation="relu")(input_images)
         image_branch = BatchNormalization()(image_branch)
@@ -83,7 +87,7 @@ class KodoModel(KodoTemplate):
 
         image_branch = Flatten()(image_branch)
 
-        image_branch = Dense(1164, activation="relu")(image_branch)
+        image_branch = Dense(1164*n_stacked_images, activation="relu")(image_branch)
         image_branch = BatchNormalization()(image_branch)
         image_branch = Dropout(dropout_probability)(image_branch)
 
@@ -128,7 +132,7 @@ class KodoModel(KodoTemplate):
         logs_path_str = str(logs_path.absolute())
         tb_callback = keras.callbacks.TensorBoard(log_dir=logs_path_str, histogram_freq=0,  
           write_graph=True, write_images=True)
-        self.model.compile(loss='mean_squared_error', optimizer=optimizers.adam())
+        self.model.compile(loss=self.loss, optimizer=optimizers.adam())
         launch_tensorboard(logs_path_str) 
         self.model.fit([self.X_img, self.X_control], self.y, batch_size=batch_size, 
                         epochs=epochs, shuffle=False, validation_split=0.2,
@@ -152,10 +156,11 @@ class KodoModel(KodoTemplate):
     def stack_arrays(self, key_events_dir, images_dir, img_update_callback=None):
         images = []
         controls = []
-        control_diffs = []
+        target_diffs = []
         sorted_filenames = sorted_alphanumeric(os.listdir(key_events_dir))
         prev_control = None
         prev_diff = None
+        prev_img = None
         for filename in sorted_filenames:
             if filename.endswith(".npy"):
                 frame_idx = filename.split("_")[1].split(".")[0]
@@ -164,17 +169,24 @@ class KodoModel(KodoTemplate):
                 if type(prev_control) is not np.ndarray or self.img_is_dropped(control):
                     prev_control = control
                     continue
+                diff = control - prev_control
                 img = np.load(images_dir / "image_{}.npy".format(frame_idx))
+                if type(prev_diff is not np.ndarray):
+                    prev_diff = diff
+                    prev_img = img
+                    continue
                 if img_update_callback:
                     img_update_callback(img)
                 img = img_resize_to_int(img, self.img_h, self.img_w, scaled=True)
-                images.append(img)
-                control_diffs.append(control - prev_control)
-                controls.append(prev_control)
+                images.append(np.stack((img, prev_img), axis=3))
+                target_diffs.append(diff)
+                controls.append(np.vstack((prev_control, prev_diff)))
+                prev_img = img
                 prev_control = control        
+                prev_diff = diff
         X_img = np.stack(images, axis=0)
         X_control = np.stack(controls, axis=0)
-        y = np.stack(control_diffs, axis=0)
+        y = np.stack(target_diffs, axis=0)
         return X_img, X_control, y
 
     def dropping_function(self, x):

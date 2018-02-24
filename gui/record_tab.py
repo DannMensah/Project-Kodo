@@ -233,12 +233,14 @@ class RecordTab(QWidget):
             self.stop_predicting()
 
     def start_predicting(self):
+        self.refresh_image = False
         self.record_button.setEnabled(False)
         self.controller = PyvJoyXboxController(self.model.info["key_labels"])
         self.controller.reset_controller()
         self.predicting = True
     
     def stop_predicting(self):
+        self.refresh_image = True
         self.record_button.setEnabled(True)
         self.predicting = False
         self.controller = None
