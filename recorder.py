@@ -1,7 +1,7 @@
 import numpy as np
 import mss
-import pygame
-
+import pygame as pg
+import keyboard
 from controller_mappings import PYGAME_TO_XBOX
 
 # Captures part of the screen and returns the resulting pixels as a NumPy array
@@ -17,40 +17,61 @@ def capture_screen(capture_screen_x=0, capture_screen_y=40, capture_screen_width
     img = np.stack([R, G, B], axis=2)
     return img
 
-def init_gamepad_capture(gamepad_id=0):
-    pygame.init()
-    pygame.joystick.init()
-    joystick_count = pygame.joystick.get_count()
-    for i in range(joystick_count):
-        joystick = pygame.joystick.Joystick(i)
-        joystick.init()
+class GamepadRecorder:
 
-def capture_gamepad(gamepad_id=0):
-    pygame.event.get()
-    joystick = pygame.joystick.Joystick(gamepad_id)
-    
-    key_events = []
-    key_labels = []
+    def __init__(self, gamepad_id=0):
+        self.gamepad_id = gamepad_id
 
-    n_axes = joystick.get_numaxes()
-    axes = [joystick.get_axis(i) for i in range(n_axes)]
-    key_events += axes
-    key_labels += ["axis_{}".format(i) for i in range(n_axes)]
-            
-    n_buttons = joystick.get_numbuttons()
-    buttons = [joystick.get_button(i) for i in range(n_buttons)] 
-    key_events += buttons
-    key_labels += ["button_{}".format(i) for i in range(n_buttons)]
+    def initialize_capture(self):
+        self.joystick = pg.joystick.Joystick(self.gamepad_id)
+        self.joystick.init()
 
-    n_hats = joystick.get_numhats() 
-    hats = [joystick.get_hat(i) for hat in range(n_hats)]
-    key_events += hats
-    key_labels += ["hat_{}".append(i) for i in range(n_hats)]
-    
-    key_labels = [PYGAME_TO_XBOX[label] for label in key_labels]
+    def capture_events(self):
+        pg.event.get()
+        
+        key_events = []
+        key_labels = []
+
+        n_axes = self.joystick.get_numaxes()
+        axes = [self.joystick.get_axis(i) for i in range(n_axes)]
+        key_events += axes
+        key_labels += ["axis_{}".format(i) for i in range(n_axes)]
+                
+        n_buttons = self.joystick.get_numbuttons()
+        buttons = [self.joystick.get_button(i) for i in range(n_buttons)] 
+        key_events += buttons
+        key_labels += ["button_{}".format(i) for i in range(n_buttons)]
+
+        n_hats = self.joystick.get_numhats()
+        hats = [self.joystick.get_hat(i) for hat in range(n_hats)]
+        key_events += hats
+        key_labels += ["hat_{}".append(i) for i in range(n_hats)]
+        
+        key_labels = [PYGAME_TO_XBOX[label] for label in key_labels]
 
 
-    return (key_labels, key_events)
+        return (key_labels, key_events)
 
-def stop_gamepad_capture():
-    pygame.quit()
+    def deactivate(self):
+        pg.quit()
+
+
+class KeyboardRecorder:
+    def __init__(self):
+        pass
+
+    def initialize_capture(self):
+        pass
+
+    def capture_events(self):
+        captured_keys = ["up", "down", "left", "right"]
+        key_states = []
+        for key in captured_keys:
+            if keyboard.is_pressed(key):
+                key_states.append(1)
+            else:
+                key_states.append(0)
+        return (captured_keys, key_states)
+
+    def deactivate(self):
+        pass

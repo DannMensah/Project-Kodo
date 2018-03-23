@@ -1,4 +1,8 @@
-import pyvjoy
+import os
+# PyvJoy only works on Windows
+if os.name == 'nt':
+    import pyvjoy
+import keyboard
 
 from controller_mappings import (XBOX_TO_PYVJOY, PYGAME_TO_XBOX)
 
@@ -36,3 +40,20 @@ class PyvJoyXboxController:
         self.controller.set_axis(a["LS_Y"], 16384)
         self.controller.set_axis(a["LT"], 0)
         self.controller.set_axis(a["RT"], 0)
+
+
+class KeyboardController:
+    def __init__(self, data_key_labels):
+        self.data_key_labels = data_key_labels
+
+    def emit_keys(self, output_values):
+        for idx, value in enumerate(output_values):
+            key_label = self.data_key_labels[idx]
+            if value == 0:
+                keyboard.release(key_label)
+            if value == 1:
+                keyboard.press(key_label)
+
+    def reset_controller(self):
+        for key in self.data_key_labels:
+            keyboard.release(key)

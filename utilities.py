@@ -38,7 +38,8 @@ def launch_tensorboard(log_dir):
     t = threading.Thread(target=run_tensorboard_server, args=([log_dir]))
     t.start()
 
-    url = "http://{}:6006/".format(socket.gethostname())
+    #url = "http://{}:6006/".format(socket.gethostname())
+    url = "http://localhost:6006/"
     webbrowser.open(url, new=0, autoraise=True)
     
 def run_tensorboard_server(log_dir):

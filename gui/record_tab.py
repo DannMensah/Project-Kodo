@@ -2,7 +2,9 @@ import sys
 import os
 import json
 import importlib
+import shutil
 from pathlib import Path
+import keyboard
 
 import numpy as np
 import time
@@ -15,10 +17,11 @@ from PyQt5.QtGui import (QPixmap, QImage, QIntValidator)
 from PyQt5.QtCore import (Qt, QTimer)
 
 import recorder
-from utilities import try_make_dirs
+from utilities import (try_make_dirs, sorted_alphanumeric)
 # PyvJoy only works on Windows
 if os.name == 'nt':
     from controllers import PyvJoyXboxController
+from controllers import KeyboardController
 
 class RecordTab(QWidget):
 
@@ -28,6 +31,10 @@ class RecordTab(QWidget):
         self.recording = False
         self.predicting = False
         self.frame = 1
+        self.interval = 100
+        self.crop_first_secs = 2
+        self.crop_last_secs = 2
+        self.available_input_devices = []
         self.available_models = []
         self.model_dir = None
         self.available_weights = None 
@@ -37,6 +44,8 @@ class RecordTab(QWidget):
         self.record_w = 200
         self.capture_h = 600
         self.capture_w = 800
+
+        self.prev_time = time.time()
 
         self.init_record_UI()
         self.init_record_loop()
@@ -48,9 +57,10 @@ class RecordTab(QWidget):
         self.input_source = None
 
         self.record_button = QPushButton("Record")
+        self.record_button.setEnabled(False)
         self.predict_button = QPushButton("Predict")
 
-        recorder.init_gamepad_capture()
+        keyboard.add_hotkey('ctrl+r', self.record_button.click)
 
         output_keys_widget = QWidget()
         self.output_keys_layout = QGridLayout()
@@ -77,18 +87,14 @@ class RecordTab(QWidget):
         self.weights_selection.activated.connect(self.select_weights)
         input_selection = self.init_input_selection()
         model_selection = self.init_model_selection()
-        self.file_path_widget = QLineEdit(os.getcwd())
-        self.file_path_widget.setEnabled(False)
-        save_button = QPushButton("Choose...")
-        save_button.clicked.connect(self.get_save_dir)
+        self.file_path_widget = QLineEdit()
+        self.file_path_widget.textChanged.connect(self.path_changed)
         self.record_button.toggle()
         self.record_button.setCheckable(True)
         self.record_button.clicked.connect(self.toggle_record_button)
         self.predict_button.toggle()
         self.predict_button.setCheckable(True)
         self.predict_button.clicked.connect(self.toggle_predict_button)
-        if os.name != 'nt':
-            self.predict_button.setEnabled(False)
 
         resolution_widget = QWidget()
         resolution_layout = QGridLayout()
@@ -113,9 +119,8 @@ class RecordTab(QWidget):
         menu_layout.addWidget(resolution_widget, 2, 2)
         menu_layout.addWidget(QLabel("Input device:"), 3, 1, Qt.AlignRight)
         menu_layout.addWidget(input_selection, 3, 2)
-        menu_layout.addWidget(QLabel("Recordings save directory:"), 4, 1, Qt.AlignRight)
+        menu_layout.addWidget(QLabel("Data name:"), 4, 1, Qt.AlignRight)
         menu_layout.addWidget(self.file_path_widget)
-        menu_layout.addWidget(save_button, 4, 3)
         menu_layout.addWidget(self.record_button, 5, 2)
         menu_layout.addWidget(QLabel("Model:"), 6, 1, Qt.AlignRight)
         menu_layout.addWidget(model_selection, 6, 2)
@@ -136,6 +141,12 @@ class RecordTab(QWidget):
         main_layout.addWidget(menu_widget)
         self.setLayout(main_layout)
 
+    def path_changed(self, new_path):
+        if new_path != "":
+            self.record_button.setEnabled(True)
+        else:
+            self.record_button.setEnabled(False)
+
     def line_edit_value_changed(self, new_val, variable_name):
         try:
             # Segmentation fault if screen_capture_size set to 1
@@ -147,17 +158,16 @@ class RecordTab(QWidget):
     def init_input_selection(self):
         input_selection = QComboBox()
         input_selection.activated.connect(self.select_input_source)
+        input_selection.addItem("0: Keyboard")
+        self.available_input_devices.append(recorder.KeyboardRecorder())
+        pygame.init()
+        pygame.joystick.init()
         joystick_count = pygame.joystick.get_count()
         for i in range(joystick_count):
             joystick = pygame.joystick.Joystick(i)
-            input_selection.addItem("{}: {}".format(i, joystick.get_name()))
-        if joystick_count == 0:
-            input_selection.addItem("No connected devices found")
-            input_selection.setEnabled(False)
-            self.record_button.setEnabled(False)
-            self.output_keys_layout.addWidget(QLabel("No connected input devices found"))
-        elif joystick_count == 1:
-            self.select_input_source(0)
+            input_selection.addItem("{}: {}".format(i + 1, joystick.get_name()))
+            self.available_input_devices.append(recorder.GamepadRecorder(i))
+        self.select_input_source(0)
         return input_selection
 
     def init_model_selection(self):        
@@ -201,8 +211,9 @@ class RecordTab(QWidget):
         self.model.model.load_weights(self.available_weights[idx] / "weights.h5")
 
     def select_input_source(self, idx):
-        self.input_source = pygame.joystick.Joystick(idx)
-        self.key_labels, key_events = recorder.capture_gamepad()
+        self.input_source = self.available_input_devices[idx]
+        self.input_source.initialize_capture()
+        self.key_labels, key_events = self.input_source.capture_events()
 
         self.key_event_widgets = []
         for idx, label in enumerate(self.key_labels):
@@ -211,10 +222,16 @@ class RecordTab(QWidget):
             self.output_keys_layout.addWidget(QLabel(label), idx, 1)
             self.output_keys_layout.addWidget(key_event_widget, idx, 2)
 
-    def get_save_dir(self):
-        save_dir_str = QFileDialog.getExistingDirectory(self, 'Select save directory', str((Path(os.getcwd()) / "data").absolute()))
-        self.file_path_widget.setText(save_dir_str)
-        self.save_dir = Path(save_dir_str) 
+    def set_save_dir(self):
+        new_name = self.file_path_widget.text()
+        data_path = Path(os.getcwd()) / "data"
+        current_data_names = os.listdir(data_path)
+        idx = 1
+        base_name = new_name
+        while new_name in current_data_names:
+            new_name = "{}_{}".format(base_name, idx)
+            idx += 1
+        self.save_dir = data_path / new_name
 
     def toggle_record_button(self):
         if self.record_button.isChecked():
@@ -235,7 +252,7 @@ class RecordTab(QWidget):
     def start_predicting(self):
         self.refresh_image = False
         self.record_button.setEnabled(False)
-        self.controller = PyvJoyXboxController(self.model.info["key_labels"])
+        self.controller = KeyboardController(self.model.info["key_labels"])
         self.controller.reset_controller()
         self.predicting = True
     
@@ -254,8 +271,10 @@ class RecordTab(QWidget):
         self.refresh_image = True
         self.recording = False
         self.predict_button.setEnabled(True)
+        self.crop_ends()
 
     def start_recording(self):
+        self.set_save_dir()
         self.refresh_image = False
         self.predict_button.setEnabled(False)
         self.frame = 1
@@ -276,7 +295,7 @@ class RecordTab(QWidget):
     def init_record_loop(self):
         self.updater = QTimer()
         self.updater.setSingleShot(True)
-        self.updater.setInterval(100)
+        self.updater.setInterval(self.interval)
         self.updater.timeout.connect(self.record_frame)
 
     def record_frame(self):
@@ -292,10 +311,29 @@ class RecordTab(QWidget):
     def record_key_events(self):
         if not self.input_source:
             return
-        key_labels, key_events = recorder.capture_gamepad()
+        key_labels, key_events = self.input_source.capture_events()
         for idx, key_event_widget in enumerate(self.key_event_widgets):
             key_event_widget.setText("{0:.3f}".format(key_events[idx]))
         return key_events
+
+    def crop_ends(self):
+        crop_first_n_frames = int(self.crop_first_secs / (self.interval / 1000))
+        crop_last_n_frames = int(self.crop_last_secs / (self.interval / 1000))
+        
+        try:
+            for idx in range(crop_first_n_frames):
+                self.crop_frame(idx+1)
+            for idx in range(crop_last_n_frames):
+                self.crop_frame(self.frame-idx-1) 
+            if len(os.listdir(self.save_dir / "images")) < 10:
+                shutil.rmtree(self.save_dir, ignore_errors=True)
+        except FileNotFoundError:
+            #All files have been removed. Remove dir
+            shutil.rmtree(self.save_dir, ignore_errors=True)
+
+    def crop_frame(self, frame_idx):
+        os.remove(self.save_dir / "images" / "image_{}.npy".format(frame_idx))
+        os.remove(self.save_dir / "key-events" / "key-event_{}.npy".format(frame_idx))
 
     def record_screen(self):
         array_img = resize(recorder.capture_screen(capture_screen_width=self.capture_w, 
@@ -314,3 +352,4 @@ class RecordTab(QWidget):
             self.record_screen_label.setPixmap(q_pixmap)
             self.record_screen_label.show()
         return array_img
+
