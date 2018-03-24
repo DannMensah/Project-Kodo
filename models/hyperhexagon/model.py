@@ -58,23 +58,23 @@ class KodoModel(KodoTemplate):
         model = Sequential()
 
         model.add(Conv2D(24, kernel_size=(5, 5), strides=(2, 2), activation="relu", 
-                         input_shape=(self.img_h, self.img_w, self.img_d)))
+                         input_shape=(self.img_h, self.img_w, self.img_d), name="conv1"))
         model.add(BatchNormalization())
         model.add(Dropout(dropout_probability))
 
-        model.add(Conv2D(36, kernel_size=(5, 5), strides=(2, 2), activation="relu"))
+        model.add(Conv2D(36, kernel_size=(5, 5), strides=(2, 2), activation="relu", name="conv2"))
         model.add(BatchNormalization())
         model.add(Dropout(dropout_probability))
 
-        model.add(Conv2D(48, kernel_size=(5, 5), strides=(2, 2), activation="relu"))
+        model.add(Conv2D(48, kernel_size=(5, 5), strides=(2, 2), activation="relu", name="conv3"))
         model.add(BatchNormalization())
         model.add(Dropout(dropout_probability))
 
-        model.add(Conv2D(64, kernel_size=(3, 3), activation="relu"))
+        model.add(Conv2D(64, kernel_size=(3, 3), activation="relu", name="conv4"))
         model.add(BatchNormalization())
         model.add(Dropout(dropout_probability))
 
-        model.add(Conv2D(64, kernel_size=(3, 3), activation="relu"))
+        model.add(Conv2D(64, kernel_size=(3, 3), activation="relu", name="conv5"))
         model.add(BatchNormalization())
         model.add(Dropout(dropout_probability))
 
@@ -138,8 +138,6 @@ class KodoModel(KodoTemplate):
                 for idx, out in enumerate(output):
                     if out == 1:
                         n_directions[idx] += 1
-                if self.img_is_dropped(output):
-                    continue
                 img = np.load(images_dir / "image_{}.npy".format(frame_idx))
                 if img_update_callback:
                     img_update_callback(img)
@@ -170,9 +168,6 @@ class KodoModel(KodoTemplate):
         outputs = np.delete(outputs, drop_list, 0)
         return (images, outputs)
         
-    def img_is_dropped(self, actions):
-        return sum(actions) == 0
-    
     # Loads all necessary data from the given folder. X's, y's, not info"
     def load_processed_data(self, data_path):
         X = np.load(data_path / "X.npy")

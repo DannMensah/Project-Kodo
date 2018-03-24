@@ -10,6 +10,7 @@ import numpy as np
 import time
 import pygame
 from skimage.transform import resize
+from skimage.filters import gaussian
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QLabel, QVBoxLayout,
                              QHBoxLayout, QWidget, QComboBox, QPushButton, QSplitter, QFrame,
                              QTextEdit, QTabWidget, QFileDialog, QGridLayout, QLineEdit)
@@ -313,7 +314,10 @@ class RecordTab(QWidget):
             return
         key_labels, key_events = self.input_source.capture_events()
         for idx, key_event_widget in enumerate(self.key_event_widgets):
-            key_event_widget.setText("{0:.3f}".format(key_events[idx]))
+            try:
+                key_event_widget.setText("{0:.3f}".format(key_events[idx]))
+            except IndexError:
+                print(idx, key_events)
         return key_events
 
     def crop_ends(self):
@@ -336,10 +340,9 @@ class RecordTab(QWidget):
         os.remove(self.save_dir / "key-events" / "key-event_{}.npy".format(frame_idx))
 
     def record_screen(self):
-        array_img = resize(recorder.capture_screen(capture_screen_width=self.capture_w, 
-                                                   capture_screen_height=self.capture_h), 
-                                                   (self.record_h, self.record_w), 
-                                                   mode="reflect")
+        array_img = recorder.capture_screen(capture_screen_width=self.capture_w, 
+                                                capture_screen_height=self.capture_h)
+        array_img = resize(array_img, (self.record_h, self.record_w), mode="reflect")
         array_img = 255 * array_img
         array_img = array_img.astype(np.uint8)
         if self.refresh_image:

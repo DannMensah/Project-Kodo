@@ -66,11 +66,18 @@ class KeyboardRecorder:
     def capture_events(self):
         captured_keys = ["up", "down", "left", "right"]
         key_states = []
+        no_op = True
         for key in captured_keys:
             if keyboard.is_pressed(key):
                 key_states.append(1)
+                no_op = False
             else:
                 key_states.append(0)
+        if no_op:
+            key_states.append(1)
+        else:
+            key_states.append(0)
+        captured_keys.append("no_op")
         return (captured_keys, key_states)
 
     def deactivate(self):

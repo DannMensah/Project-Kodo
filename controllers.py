@@ -49,6 +49,9 @@ class KeyboardController:
     def emit_keys(self, output_values):
         for idx, value in enumerate(output_values):
             key_label = self.data_key_labels[idx]
+            if key_label == "no_op":
+                self.reset_controller()
+                continue
             if value == 0:
                 keyboard.release(key_label)
             if value == 1:
@@ -56,4 +59,6 @@ class KeyboardController:
 
     def reset_controller(self):
         for key in self.data_key_labels:
+            if key != "no op":
+                continue
             keyboard.release(key)
