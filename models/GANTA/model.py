@@ -225,6 +225,9 @@ class KodoModel(KodoTemplate):
         valid_half = np.ones((half_batch, 1))
         fake_half = np.zeros((half_batch, 1))
 
+        valid_val = np.ones((split_idx, 1))
+        fake_val = np.zeros((split_idx, 1))
+
 
         for epoch in range(epochs):
             X_train_whole, y_train_whole = shuffle(X_train_whole, y_train_whole, random_state=0)
@@ -288,8 +291,8 @@ class KodoModel(KodoTemplate):
             # Generate a half batch of new controls
             gen_controls = self.generator.predict([X_val, noise])
 
-            d_loss_real_val = self.discriminator.test_on_batch([X_val, y_val], valid)
-            d_loss_fake_val = self.discriminator.test_on_batch([X_val, gen_controls], fake)
+            d_loss_real_val = self.discriminator.test_on_batch([X_val, y_val], valid_val)
+            d_loss_fake_val = self.discriminator.test_on_batch([X_val, gen_controls], valid_fake)
             d_loss_val = 0.5 * np.add(d_loss_fake_val, d_loss_real_val)
 
             # Train the generator
