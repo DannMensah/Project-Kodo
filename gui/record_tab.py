@@ -9,7 +9,7 @@ import keyboard
 import numpy as np
 import time
 import pygame
-from skimage.transform import resize
+from cv2 import resize
 from skimage.filters import gaussian
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QLabel, QVBoxLayout,
                              QHBoxLayout, QWidget, QComboBox, QPushButton, QSplitter, QFrame,
@@ -32,7 +32,7 @@ class RecordTab(QWidget):
         self.recording = False
         self.predicting = False
         self.frame = 1
-        self.interval = 100
+        self.interval = 25
         self.crop_first_secs = 2
         self.crop_last_secs = 2
         self.available_input_devices = []
@@ -301,7 +301,11 @@ class RecordTab(QWidget):
 
     def record_frame(self):
         self.updater.start()
-        key_events = self.record_key_events()
+        current_time = time.time()
+        #print(current_time - self.prev_time)
+        self.prev_time = current_time
+        if not self.predicting:
+            key_events = self.record_key_events()
         img = self.record_screen()
         if self.recording:
             self.save_frame(img, key_events)
@@ -324,16 +328,14 @@ class RecordTab(QWidget):
         crop_first_n_frames = int(self.crop_first_secs / (self.interval / 1000))
         crop_last_n_frames = int(self.crop_last_secs / (self.interval / 1000))
         
-        try:
+        n_frames = len(os.listdir(self.save_dir / "images"))
+        if n_frames <= crop_first_n_frames + crop_last_n_frames + 10:
+            shutil.rmtree(self.save_dir, ignore_errors=True)
+        else:
             for idx in range(crop_first_n_frames):
                 self.crop_frame(idx+1)
             for idx in range(crop_last_n_frames):
                 self.crop_frame(self.frame-idx-1) 
-            if len(os.listdir(self.save_dir / "images")) < 10:
-                shutil.rmtree(self.save_dir, ignore_errors=True)
-        except FileNotFoundError:
-            #All files have been removed. Remove dir
-            shutil.rmtree(self.save_dir, ignore_errors=True)
 
     def crop_frame(self, frame_idx):
         os.remove(self.save_dir / "images" / "image_{}.npy".format(frame_idx))
@@ -342,9 +344,7 @@ class RecordTab(QWidget):
     def record_screen(self):
         array_img = recorder.capture_screen(capture_screen_width=self.capture_w, 
                                                 capture_screen_height=self.capture_h)
-        array_img = resize(array_img, (self.record_h, self.record_w), mode="reflect")
-        array_img = 255 * array_img
-        array_img = array_img.astype(np.uint8)
+        array_img = resize(array_img, (self.record_w, self.record_h))
         if self.refresh_image:
             height, width, channel = array_img.shape
             bytes_per_line = 3 * width

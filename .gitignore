@@ -17,3 +17,7 @@ models/hyperhexagon/data/*
 models/hyperhexagon/weights/*
 !models/hyperhexagon/weights/.gitkeep
 !models/hyperhexagon/data/.gitkeep
+models/GANTA/data/*
+models/GANTA/weights/*
+!models/GANTA/weights/.gitkeep
+!models/GANTA/data/.gitkeep

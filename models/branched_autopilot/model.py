@@ -14,9 +14,10 @@ from keras.layers.normalization import BatchNormalization
 from keras import optimizers
 from keras import backend as K
 from sklearn.utils import shuffle
+from cv2 import resize
 
 from utilities import (stack_npy_files_in_dir, try_make_dirs,  
-                       img_resize_to_int, launch_tensorboard,
+                       launch_tensorboard,
                        sorted_alphanumeric)
 from models.template import KodoTemplate
 
@@ -145,7 +146,7 @@ class KodoModel(KodoTemplate):
             json.dump(self.info, info_file)
         
     def get_actions(self, img):
-        img = img_resize_to_int(img, self.img_h, self.img_w, scaled=True)
+        img = resize(img, (self.img_h, self.img_w)) / 255
         if type(self.prev_control) is not np.ndarray:
             prediction = np.zeros((len(self.info["key_labels"]),))
             self.prev_control = np.zeros((len(self.info["key_labels"]),))
@@ -186,9 +187,9 @@ class KodoModel(KodoTemplate):
                     prev_diff = diff
                     continue
                 original_img = np.load(images_dir / "image_{}.npy".format(frame_idx))
-                img = img_resize_to_int(original_img, self.img_h, self.img_w, scaled=True)
+                img = resize(original_img, (self.img_h, self.img_w)) / 255
                 prev_img = np.load(images_dir / "image_{}.npy".format(int(frame_idx)-1))
-                prev_img = img_resize_to_int(prev_img, self.img_h, self.img_w, scaled=True)
+                prev_img = resize(prev_img, (self.img_h, self.img_w)) / 255
                 if img_update_callback:
                     img_update_callback(original_img)
                 images.append(np.concatenate((img, prev_img), axis=2))

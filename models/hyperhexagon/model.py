@@ -14,10 +14,11 @@ from keras.layers.normalization import BatchNormalization
 from keras import optimizers
 from keras import backend as K
 from sklearn.utils import shuffle
+from cv2 import resize
 
 from utilities import (stack_npy_files_in_dir, try_make_dirs,  
-                       img_resize_to_int, launch_tensorboard,
-                       sorted_alphanumeric)
+                        launch_tensorboard, sorted_alphanumeric, 
+                        change_colors, shift_hue)
 from models.template import KodoTemplate 
 
 class KodoModel(KodoTemplate):
@@ -116,11 +117,10 @@ class KodoModel(KodoTemplate):
             json.dump(self.info, info_file)
         
     def get_actions(self, img):
-        img = img_resize_to_int(img, self.img_h, self.img_w, scaled=True)
+        img = img/255
         actions = self.model.predict(np.expand_dims(img, axis=0), batch_size=1)[0]
         output_actions = [0] * actions.shape[0]
         max_action_idx = np.argmax(actions)
-        print(max_action_idx)
         output_actions[max_action_idx] = 1
         return output_actions
 
@@ -139,9 +139,10 @@ class KodoModel(KodoTemplate):
                     if out == 1:
                         n_directions[idx] += 1
                 img = np.load(images_dir / "image_{}.npy".format(frame_idx))
+                img = shift_hue(img, random.random())
                 if img_update_callback:
                     img_update_callback(img)
-                img = img_resize_to_int(img, self.img_h, self.img_w, scaled=True)
+                img = resize(img, (self.img_h, self.img_w)) / 255
                 images.append(img)
                 outputs.append(output)
         images, outputs = self.even_directions(images, outputs, n_directions)

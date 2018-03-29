@@ -77,22 +77,31 @@ class ProcessTab(QWidget):
         data_folder_selection = QComboBox()
         data_folder_selection.activated.connect(self.select_data_folder)
         data_folder = Path(os.getcwd()) / "data"
+        data_folder_selection.addItem("Process all non-processed")
         for data in data_folder.iterdir():
             if not data.is_dir() or data.name == "__pycache__":
                 continue
             data_folder_selection.addItem(data.name)
             self.available_data_folders.append(data)
-        if self.available_data_folders:
+        if len(self.available_data_folders) > 1:
             self.select_data_folder(0)
+        else:
+            data_folder_selection.setEnabled(False)
         return data_folder_selection
 
     def data_screen_toggled(self):
         self.show_data_screen = not self.show_data_screen
 
     def select_data_folder(self, idx):
-        self.data_folder = self.available_data_folders[idx]
-        self.info, key_labels_unchanged = self.load_info()
-        self.refresh_key_mask(key_labels_unchanged)
+        if idx == 0:
+            self.data_folder = self.available_data_folders[1]
+            self.info, key_labels_unchanged = self.load_info()
+            self.refresh_key_mask(key_labels_unchanged)
+            self.data_folder = None
+        else:
+            self.data_folder = self.available_data_folders[idx]
+            self.info, key_labels_unchanged = self.load_info()
+            self.refresh_key_mask(key_labels_unchanged)
         if self.model:
             self.process_button.setEnabled(True)
 
@@ -167,7 +176,18 @@ class ProcessTab(QWidget):
         QApplication.processEvents()
 
     def process(self):
-        self.model.process(self.data_folder, self.input_channels_mask, img_update_callback=self.update_image)
+        if not self.data_folder:
+            for idx, folder in enumerate(self.available_data_folders):
+                if idx != 0:
+                    self.data_folder = self.available_data_folders[idx]
+                    self.info, key_labels_unchanged = self.load_info()
+                    if not key_labels_unchanged:
+                        continue
+                    self.model.process(self.data_folder, 
+                                       self.input_channels_mask, 
+                                       img_update_callback=self.update_image)
+        else:
+            self.model.process(self.data_folder, self.input_channels_mask, img_update_callback=self.update_image)
         self.process_button.setChecked(False)
         self.process_button.setEnabled(True)
         self.process_button.setStyleSheet("")
