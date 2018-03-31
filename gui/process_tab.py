@@ -78,6 +78,7 @@ class ProcessTab(QWidget):
         data_folder_selection.activated.connect(self.select_data_folder)
         data_folder = Path(os.getcwd()) / "data"
         data_folder_selection.addItem("Process all non-processed")
+        self.available_data_folders.append(None)
         for data in data_folder.iterdir():
             if not data.is_dir() or data.name == "__pycache__":
                 continue

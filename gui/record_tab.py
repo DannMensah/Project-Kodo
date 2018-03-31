@@ -207,9 +207,7 @@ class RecordTab(QWidget):
             self.select_weights(0)
 
     def select_weights(self, idx):
-        self.model.load_info(self.available_weights[idx] / "info.json")
-        self.model.create_model(dropout_probability=0)
-        self.model.model.load_weights(self.available_weights[idx] / "weights.h5")
+        self.model.load_saved_model(self.available_weights[idx])
 
     def select_input_source(self, idx):
         self.input_source = self.available_input_devices[idx]
@@ -253,7 +251,7 @@ class RecordTab(QWidget):
     def start_predicting(self):
         self.refresh_image = False
         self.record_button.setEnabled(False)
-        self.controller = KeyboardController(self.model.info["key_labels"])
+        self.controller = PyvJoyXboxController(self.model.info["key_labels"])
         self.controller.reset_controller()
         self.predicting = True
     
