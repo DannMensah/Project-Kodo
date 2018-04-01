@@ -37,7 +37,7 @@ class KodoModel(KodoTemplate):
         self.model_path = Path(os.path.dirname(os.path.abspath(__file__)))
         self.noise_dim = 100
         self.n_critic = 5
-        self.clip_value = 0.01
+        self.clip_value = 0.05
 
     def process(self, data_folder, input_channels_mask=None, img_update_callback=None):    
         with open(data_folder / "info.json") as info_file:
@@ -62,6 +62,39 @@ class KodoModel(KodoTemplate):
 
     def wasserstein_loss(self, y_true, y_pred):
         return K.mean(y_true * y_pred)
+
+    def create_encoder(self):
+        layers = [
+        Conv2D(24, kernel_size=(5, 5), strides=(2, 2), input_shape=(self.img_h, self.img_w, self.img_d)),
+        LeakyReLU(alpha=0.2),
+        BatchNormalization(),
+        Dropout(0.5),
+
+        Conv2D(36, kernel_size=(5, 5), strides=(2, 2)),
+        LeakyReLU(alpha=0.2),
+        BatchNormalization(),
+        Dropout(0.5),
+
+        Conv2D(48, kernel_size=(5, 5), strides=(2, 2)),
+        LeakyReLU(alpha=0.2),
+        BatchNormalization(),
+        Dropout(0.5),
+
+        Conv2D(64, kernel_size=(3, 3)),
+        LeakyReLU(alpha=0.2),
+        BatchNormalization(),
+        Dropout(0.5),
+
+        Conv2D(64, kernel_size=(3, 3)),
+
+        Flatten()
+        ]
+
+        def encoder(x):
+            for layer in layers:
+                x = layer(x)
+            return x
+        return encoder
      
     def create_generator(self):
         input_img = Input(shape=(self.img_h, self.img_w, self.img_d))
@@ -94,10 +127,10 @@ class KodoModel(KodoTemplate):
 
         g = concatenate([g, noise])
         
-        g = Dense(1164)(g)
-        g = LeakyReLU(alpha=0.2)(g)
-        g = BatchNormalization()(g)
-        g = Dropout(0.5)(g)
+##        g = Dense(1164)(g)
+##        g = LeakyReLU(alpha=0.2)(g)
+##        g = BatchNormalization()(g)
+##        g = Dropout(0.5)(g)
 
         g = Dense(100)(g)
         g = LeakyReLU(alpha=0.2)(g)
@@ -146,12 +179,13 @@ class KodoModel(KodoTemplate):
 
         d = Flatten()(d)
 
+
         d = concatenate([d, input_control])
         
-        d = Dense(1164)(d)
-        d = LeakyReLU(alpha=0.2)(d)
-        d = BatchNormalization()(d)
-        d = Dropout(0.5)(d)
+##        d = Dense(1164)(d)
+##        d = LeakyReLU(alpha=0.2)(d)
+##        d = BatchNormalization()(d)
+##        d = Dropout(0.5)(d)
 
         d = Dense(100)(d)
         d = LeakyReLU(alpha=0.2)(d)
@@ -176,44 +210,47 @@ class KodoModel(KodoTemplate):
 
         self.num_control_outputs = len(self.info["key_labels"])
 
-        optimizer_g = optimizers.RMSprop(lr=0.005)
-        optimizer_d = optimizers.RMSprop(lr=0.005)
+        self.encoder = self.create_encoder()
+
+        optimizer_g = optimizers.RMSprop(lr=0.0005)
+        optimizer_d = optimizers.RMSprop(lr=0.0005)
+        optimizer_conv = optimizers.Adam()
 
 
         # The generator takes noise and the image as inputs and outputs the control
         noise = Input(shape=(self.noise_dim,))
         img = Input(shape=(self.img_h, self.img_w, self.img_d))
 
+        #Conv layer pre-trainer
+        self.conv_trainer = self.create_generator()
+        self.conv_trainer.compile(loss="mean_squared_error",
+                                  optimizer=optimizer_conv)
+
         
 
         print("\n\n########### DISCRIMINATOR ############")
         self.discriminator = self.create_discriminator()
         self.discriminator.compile(loss=self.wasserstein_loss, 
-                                   optimizer=optimizer_d,
-                                   metrics=['accuracy'])
+                                   optimizer=optimizer_d)
         self.discriminator.summary()
         
 
         print("########### GENERATOR ############")
         self.generator = self.create_generator()
-        for layer in self.discriminator.layers:
-            layer.trainable = False
         self.discriminator.trainable = False
-        for layer in self.generator.layers:
-            layer.trainable = True
         self.generator.compile(loss=self.wasserstein_loss, 
                                optimizer=optimizer_g)
         self.generator.summary()
 
         control = self.generator([img, noise])
+        
 
         print("\n\n########### COMBINED ############")
         valid = self.discriminator([img, control])
         # noise and the image as input => generates control signal => determines validity 
         self.combined = Model([img, noise], valid)
         self.combined.compile(loss=self.wasserstein_loss, 
-            optimizer=optimizer_g,
-            metrics=['accuracy'])
+            optimizer=optimizer_g)
         self.combined.summary()
 
 
@@ -240,6 +277,7 @@ class KodoModel(KodoTemplate):
         iterations = math.ceil(X_train_whole.shape[0] / batch_size)
 
         losses = []
+        
         for epoch in range(epochs):
             X_train_whole, y_train_whole = shuffle(X_train_whole, y_train_whole, random_state=0)
 
@@ -285,7 +323,7 @@ class KodoModel(KodoTemplate):
                     d_loss_fake = self.discriminator.train_on_batch([images, gen_controls], valid_half)
                     d_loss = 0.5 * np.add(d_loss_fake, d_loss_real)
 
-                    d_losses.append(d_loss[0])
+                    d_losses.append(d_loss)
 
                     # Clip discriminator weights
                     for l in self.discriminator.layers:
@@ -305,8 +343,8 @@ class KodoModel(KodoTemplate):
 
                 # Train the generator
                 g_loss = self.combined.train_on_batch([sampled_images, noise], fake)
-                g_losses.append(g_loss[0])
-                print("Iteration {}/{} - D_loss: {:.6f} -  G_loss: {:.6f}".format(n_iter, iterations, d_loss[0], g_loss[0]))            
+                g_losses.append(g_loss)
+                print("Iteration {}/{} - D_loss: {:.6f} -  G_loss: {:.6f}".format(n_iter, iterations, d_loss, g_loss))            
 
             d_val_losses = []
             g_val_losses = []
@@ -332,8 +370,8 @@ class KodoModel(KodoTemplate):
                 d_loss_val = 0.5 * np.add(d_loss_fake_val, d_loss_real_val)
                 g_loss_val = self.combined.test_on_batch([X_val_batch, noise], fake)
 
-                d_val_losses.append(d_loss_val[0])
-                g_val_losses.append(g_loss_val[0])
+                d_val_losses.append(d_loss_val)
+                g_val_losses.append(g_loss_val)
 
             d_loss_val = np.mean(d_val_losses)
             g_loss_val = np.mean(g_val_losses)
