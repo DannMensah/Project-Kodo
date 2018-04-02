@@ -95,14 +95,16 @@ class KodoModel(KodoTemplate):
     def wasserstein_loss(self, y_true, y_pred):
         return K.mean(y_true * y_pred)
 
-    def gradient_penalty_loss(self, y_true, y_pred, averaged_samples, gradient_penalty_weight):
-        gradients = K.gradients(y_pred, averaged_samples)[0]
-        gradients_sqr = K.square(gradients)
-        gradients_sqr_sum = K.sum(gradients_sqr,
-                                  axis=np.arange(1, len(gradients_sqr.shape)))
-        gradient_l2_norm = K.sqrt(gradients_sqr_sum)
-        gradient_penalty = gradient_penalty_weight * K.square(1 - gradient_l2_norm)
-        return K.mean(gradient_penalty) 
+    def gradient_penalty_loss(self, y_true, y_pred, inputs, gradient_penalty_weight):
+        grad = K.gradients(y_pred, inputs)[0]
+
+        grad_sqr = K.square(grad)
+        grad_sqr_sum = K.sum(grad_sqr,
+                                  axis=np.arange(1, len(grad_sqr.shape)))
+        grad_l2_norm = K.sqrt(grad_sqr_sum)
+        grad_penalty = gradient_penalty_weight * K.square(grad_l2_norm - 1)
+
+        return grad_penalty
 
     def create_generator(self):
         input_img = Input(shape=(self.img_h, self.img_w, self.img_d))
@@ -254,20 +256,27 @@ class KodoModel(KodoTemplate):
         averaged_controls = RandomWeightedAverageControls(batch_size)([real_controls, generated_controls_for_discriminator])
         averaged_imgs = RandomWeightedAverageImages(batch_size)([real_disc_img_input, generator_img_input_for_discriminator])
         averaged_controls_out = discriminator([averaged_imgs, averaged_controls])
-        partial_gp_loss = partial(self.gradient_penalty_loss,
-                                  averaged_samples=averaged_controls,
+        control_gp_loss = partial(self.gradient_penalty_loss,
+                                  inputs=averaged_controls,
                                   gradient_penalty_weight=self.gradient_penalty_weight)
-        partial_gp_loss.__name__ = "gradient_penalty"
+        control_gp_loss.__name__ = "control_gradient_penalty"
+
+        img_gp_loss = partial(self.gradient_penalty_loss,
+                              inputs=real_disc_img_input,
+                              gradient_penalty_weight=self.gradient_penalty_weight)
+        img_gp_loss.__name__ = "img_gradient_penalty"
         
         self.discriminator = Model(inputs=[real_disc_img_input, real_controls,
                                            generator_img_input_for_discriminator, generator_noise_input_for_discriminator],
                                    outputs=[discriminator_output_from_real_samples,
                                             discriminator_output_from_generator,
+                                            averaged_controls_out,
                                             averaged_controls_out])
         self.discriminator.compile(optimizer=optimizer_d,
                                    loss=[self.wasserstein_loss,
                                          self.wasserstein_loss,
-                                         partial_gp_loss])
+                                         control_gp_loss,
+                                         img_gp_loss])
 
         self.generator.summary()
         self.discriminator.summary()
@@ -319,20 +328,27 @@ class KodoModel(KodoTemplate):
         
         averaged_controls = RandomWeightedAverageControls(batch_size)([real_controls, generated_controls_for_discriminator])
         averaged_controls_out = discriminator([real_disc_img_input, averaged_controls])
-        partial_gp_loss = partial(self.gradient_penalty_loss,
-                                  averaged_samples=averaged_controls,
+        control_gp_loss = partial(self.gradient_penalty_loss,
+                                  inputs=averaged_controls,
                                   gradient_penalty_weight=self.gradient_penalty_weight)
-        partial_gp_loss.__name__ = "gradient_penalty"
+        control_gp_loss.__name__ = "control_gradient_penalty"
+
+        img_gp_loss = partial(self.gradient_penalty_loss,
+                              inputs=real_disc_img_input,
+                              gradient_penalty_weight=self.gradient_penalty_weight)
+        img_gp_loss.__name__ = "img_gradient_penalty"
         
         self.discriminator = Model(inputs=[real_disc_img_input, real_controls,
                                            generator_img_input_for_discriminator, generator_noise_input_for_discriminator],
                                    outputs=[discriminator_output_from_real_samples,
                                             discriminator_output_from_generator,
+                                            averaged_controls_out,
                                             averaged_controls_out])
         self.discriminator.compile(optimizer=optimizer_d,
                                    loss=[self.wasserstein_loss,
                                          self.wasserstein_loss,
-                                         partial_gp_loss])
+                                         control_gp_loss,
+                                         img_gp_loss])
 
         self.generator.summary()
         self.discriminator.summary()
@@ -360,44 +376,47 @@ class KodoModel(KodoTemplate):
 
             losses_real = []
             losses_fake = []
-            losses_r_f = []
-            minibatches_size = batch_size * self.n_critic
-            iterations = int(X_train.shape[0] // (batch_size * self.n_critic))
-    
+            losses_r_minus_f = []
+            losses_r_plus_f = []
+            n_data_splits = self.n_critic + 1
+            iterations = X_train.shape[0] // (n_data_splits * batch_size)
+
             for n_iter in range(iterations):
-                X_disc_minibatch = X_train[n_iter * minibatches_size:(n_iter+1) * minibatches_size]
-                y_disc_minibatch = y_train[n_iter * minibatches_size:(n_iter+1) * minibatches_size]
+                iteration_offset = (n_iter * self.n_critic * batch_size)
                 for n_critic_iter in range(self.n_critic):
                     # ---------------------
                     #  Train Discriminator
                     # ---------------------
-                    real_controls = y_disc_minibatch[n_critic_iter * batch_size:(n_critic_iter+1) * batch_size]
-                    imgs = X_disc_minibatch[n_critic_iter * batch_size:(n_critic_iter+1) * batch_size]
+                    imgs = X_train[iteration_offset + n_critic_iter * batch_size:iteration_offset + (n_critic_iter+1) * batch_size]
+                    real_controls = y_train[iteration_offset + n_critic_iter * batch_size:iteration_offset + (n_critic_iter+1) * batch_size]
                     noise = np.random.rand(batch_size, self.noise_dim).astype(np.float32)
                     d_loss = self.discriminator.train_on_batch([imgs, real_controls, imgs, noise],
-                                                                [negative_y, positive_y, dummy_y])
+                                                                [negative_y, positive_y, dummy_y, dummy_y])
                     loss_real = d_loss[1]
                     loss_fake = d_loss[2]
-                    loss_r_f = loss_real - loss_fake
+                    loss_r_minus_f = loss_real - loss_fake
+                    loss_r_plus_f = loss_real + loss_fake
                     losses_real.append(loss_real)
                     losses_fake.append(loss_fake)
-                    losses_r_f.append(loss_r_f)
+                    losses_r_minus_f.append(loss_r_minus_f)
+                    losses_r_plus_f.append(loss_r_plus_f)
                 # ---------------------
                 #  Train Generator
                 # ---------------------
                 noise = np.random.rand(batch_size, self.noise_dim).astype(np.float32)
-                imgs = X_train[n_iter * batch_size: (n_iter + 1) * batch_size]
+                imgs = X_train[iteration_offset + self.n_critic * batch_size:iteration_offset + (self.n_critic+1) * batch_size]
                 g_loss = self.generator.train_on_batch([imgs, noise],
                                                         positive_y)
-                print("Iteration {}/{} - loss_real: {:.6f} - loss_fake: {:.6f} - loss_r_f: {:.6f}".format(n_iter, iterations, loss_real, loss_fake, loss_r_f))            
+                print("Iteration {}/{} - loss_real: {:.6f} - loss_fake: {:.6f} - loss_r_minus_f: {:.6f} - loss_r_plus_f: {:.6f}".format(n_iter, iterations, loss_real, loss_fake, loss_r_minus_f, loss_r_plus_f))            
 
             avg_loss_real = np.mean(losses_real)
             avg_loss_fake = np.mean(losses_fake)
-            avg_loss_r_f = np.mean(losses_r_f)
+            avg_loss_r_minus_f = np.mean(losses_r_minus_f)
+            avg_loss_r_plus_f = np.mean(losses_r_plus_f)
 
-            print("Epoch {}/{} avg_loss_real: {:.6f} - avg_loss_fake: {:.6f} - avg_loss_r_f: {:.6f}".format(epoch + 1, epochs, avg_loss_real, avg_loss_fake, avg_loss_r_f))
+            print("Epoch {}/{} avg_loss_real: {:.6f} - avg_loss_fake: {:.6f} - avg_loss_r_minus_f: {:.6f} - avg_loss_r_minus_f: {:.6f}".format(epoch + 1, epochs, avg_loss_real, avg_loss_fake, avg_loss_r_minus_f, avg_loss_r_plus_f))
 
-            losses.append([avg_loss_real, avg_loss_fake, avg_loss_r_f])
+            losses.append([avg_loss_real, avg_loss_fake, avg_loss_r_minus_f, avg_loss_r_plus_f])
             with open(weights_path / "loss.csv", "w") as f:
                 writer = csv.writer(f)
                 writer.writerows(losses)
