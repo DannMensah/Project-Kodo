@@ -32,7 +32,7 @@ class RecordTab(QWidget):
         self.recording = False
         self.predicting = False
         self.frame = 1
-        self.interval = 25
+        self.interval = 100
         self.crop_first_secs = 2
         self.crop_last_secs = 2
         self.available_input_devices = []
@@ -259,6 +259,7 @@ class RecordTab(QWidget):
         self.refresh_image = True
         self.record_button.setEnabled(True)
         self.predicting = False
+        self.controller.reset_controller()
         self.controller = None
 
     def take_action(self, img):
